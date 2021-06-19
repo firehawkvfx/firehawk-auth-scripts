@@ -286,11 +286,9 @@ function generate_aws_creds_deadline {
 
 function sqs_send_vpn_payload {
   local -r resourcetier="$1"
-  local -r host1="$2"
-  local -r host2="$3"
   log "...Aquiring host names for vault queries."
-  host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
-  host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
+  local -r host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
+  local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
   sqs_remote_in_vpn_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_vpn_url)"    
   $TF_VAR_firehawk_path/modules/terraform-aws-vpn/modules/tf_aws_openvpn/scripts/sqs_notify.sh "$resourcetier" "$sqs_remote_in_vpn_url" "$host1" "$host2"
@@ -298,11 +296,9 @@ function sqs_send_vpn_payload {
 
 function sqs_send_deadline_payload {
   local -r resourcetier="$1"
-  local -r host1="$2"
-  local -r host2="$3"
   log "...Aquiring host names for vault queries."
-  host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
-  host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
+  local -r host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
+  local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
   sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)"    
   $TF_VAR_firehawk_path/../deploy/firehawk-render-cluster/modules/terraform-aws-sqs-deadline-client/main/modules/firehawk-auth-scripts/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40
