@@ -422,7 +422,7 @@ function install {
       exit 1
     fi
 
-    log "...Aquiring Fingerprint"
+    log_bare "...Aquiring Fingerprint"
     received_fingerprint="$(ssh-keygen -l -f $public_key)"
     received_fingerprint=($received_fingerprint)
     received_fingerprint=${received_fingerprint[1]}
@@ -430,14 +430,14 @@ function install {
     read -r -p "Does this match the remote host's fingerprint: $received_fingerprint [Y/n] " input
     case $input in
       [yY][eE][sS]|[yY])
-        log "Yes"
+        log_bare "Yes"
         ;;
       [nN][oO]|[nN])
-        log "No"
+        log_bare "No"
         exit 1
         ;;
       *)
-        log "Invalid input: $input"
+        log_bare "Invalid input: $input"
         exit 1
         ;;
     esac
