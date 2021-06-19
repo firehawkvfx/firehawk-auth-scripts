@@ -249,34 +249,34 @@ function poll_public_signed_cert {
 
 function generate_aws_creds {
   local -r aws_backend_role="$1"
-  log ""
-  log "...Generating AWS credentials.  Configure your remote host with these keys to automate SSH and VPN auth (wake --init)."
+  echo ""
+  echo "...Generating AWS credentials.  Configure your remote host with these keys to automate SSH and VPN auth (wake --init)."
   local -r aws_creds=$(vault read aws/creds/$aws_backend_role)
   local -r access_key="$(echo "$aws_creds" | awk '/^access_key/ { print $2 ; exit }')"
   local -r secret_key="$(echo "$aws_creds" | awk '/^secret_key/ { print $2 ; exit }')"
-  log ""
-  log "region: $AWS_DEFAULT_REGION"
-  log "access_key: $access_key"
-  log "secret_key: $secret_key"
-  log ""
+  echo ""
+  echo "region: $AWS_DEFAULT_REGION"
+  echo "access_key: $access_key"
+  echo "secret_key: $secret_key"
+  echo ""
 }
 
 function generate_aws_creds_vpn {
   local -r aws_backend_role="$1"
-  log ""
-  log "Assuming you are configuring a Vagrant VPN for first time use."
+  echo ""
+  echo "Assuming you are configuring a Vagrant VPN for first time use."
   generate_aws_creds "$aws_backend_role"
-  log "On your remote host, start the vagrant VM with:"
-  log "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/wake --init"
-  log ""
+  echo "On your remote host, start the vagrant VM with:"
+  echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/wake --init"
+  echo ""
 }
 
 function generate_aws_creds_deadline {
   local -r aws_backend_role="$1"
-  log ""
-  log "Assuming you are configuring an SSH host for first time use that will aquire Deadline client certificates."
+  echo ""
+  echo "Assuming you are configuring an SSH host for first time use that will aquire Deadline client certificates."
   generate_aws_creds "$aws_backend_role"
-  log ""
+  echo ""
 }
 
 function sqs_send_vpn_payload {
