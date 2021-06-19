@@ -14,6 +14,7 @@ readonly DEFAULT_TRUSTED_CA="/etc/ssh/trusted-user-ca-keys.pem"
 readonly DEFAULT_SSH_KNOWN_HOSTS="/etc/ssh/ssh_known_hosts"
 readonly DEFAULT_SSH_KNOWN_HOSTS_FRAGMENT=$HOME/.ssh/ssh_known_hosts_fragment
 readonly DEFAULT_POLL_DURATION=10
+readonly VAULT_ADDR=https://vault.service.consul:8200
 
 # These helper functions are from the sign_ssh_key.sh Hashicorp script
 
@@ -257,7 +258,7 @@ function poll_public_signed_cert {
 function generate_aws_creds {
   local -r aws_backend_role="$1"
   echo ""
-  echo "...Generating AWS credentials.  Configure your remote host with these keys to automate SSH and VPN auth (wake --init)."
+  echo "...Generating AWS credentials."
   local -r aws_creds=$(vault read aws/creds/$aws_backend_role)
   local -r access_key="$(echo "$aws_creds" | awk '/^access_key/ { print $2 ; exit }')"
   local -r secret_key="$(echo "$aws_creds" | awk '/^secret_key/ { print $2 ; exit }')"
@@ -271,7 +272,7 @@ function generate_aws_creds {
 function generate_aws_creds_vpn {
   local -r aws_backend_role="$1"
   echo ""
-  echo "Assuming you are configuring a Vagrant VPN for first time use."
+  echo "Assuming you are configuring a Vagrant VPN for first time use.  Configure your remote host with these keys to automate SSH and VPN auth (wake --init)."
   generate_aws_creds "$aws_backend_role"
   echo "On your remote host, start the vagrant VM with:"
   echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/wake --init"
@@ -286,6 +287,13 @@ function generate_aws_creds_deadline {
   echo ""
 }
 
+function sqs_purge_vpn {
+  local -r resourcetier="$1"
+  sqs_remote_in_vpn_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_vpn_url)"    
+  log "...Purging: $sqs_remote_in_vpn_url"
+  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_vpn_url" --purge-only
+}
+
 function sqs_send_vpn_payload {
   local -r resourcetier="$1"
   log "...Aquiring host names for vault queries."
@@ -293,7 +301,21 @@ function sqs_send_vpn_payload {
   local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
   sqs_remote_in_vpn_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_vpn_url)"    
-  $TF_VAR_firehawk_path/modules/terraform-aws-vpn/modules/tf_aws_openvpn/scripts/sqs_notify.sh "$resourcetier" "$sqs_remote_in_vpn_url" "$host1" "$host2"
+
+  printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
+  until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
+
+  openvpn_admin_pw="$(vault kv get -field=value -address="$VAULT_ADDR" -format=json $resourcetier/network/openvpn_admin_pw)"
+  append_json="{ \"openvpn_admin_pw\" : \"$openvpn_admin_pw\" }"
+  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_vpn_url" --host1 "$host1" --host2 "$host2" --token-policy vpn_read_config --token-use-limit 4 --append-json "$append_json"
+  # $TF_VAR_firehawk_path/modules/terraform-aws-vpn/modules/tf_aws_openvpn/scripts/sqs_notify.sh "$resourcetier" "$sqs_remote_in_vpn_url" "$host1" "$host2"
+}
+
+function sqs_purge_deadline {
+  local -r resourcetier="$1"
+  sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)" 
+  log "...Purging: $sqs_remote_in_deadline_cert_url"
+  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --purge-only
 }
 
 function sqs_send_deadline_payload {
@@ -301,6 +323,10 @@ function sqs_send_deadline_payload {
   log "...Aquiring host names for vault queries."
   local -r host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
   local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
+
+  printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
+  until consul catalog services | grep -m 1 "deadline"; do sleep 10 ; done
+
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
   sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)"    
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40
@@ -393,9 +419,11 @@ function install {
     if [[ "$aws_backend_role" == "aws-creds-vpn-cert" ]]; then
       generate_aws_creds_vpn "$aws_backend_role"
       sqs_send_vpn_payload="true"
+      sqs_purge_vpn "$resourcetier"
     elif [[ "$aws_backend_role" == "aws-creds-deadline-cert" ]]; then
       generate_aws_creds_deadline "$aws_backend_role"
       sqs_send_deadline_payload="true"
+      sqs_purge_deadline "$resourcetier"
     else
       log_error "--aws-backend-role must be aws-creds-vpn-cert or aws-creds-deadline-cert"
       exit 1
@@ -514,9 +542,9 @@ function install {
   fi
 
   if [[ "$sqs_send_vpn_payload" == "true" ]]; then
-    sqs_send_vpn_payload "$resourcetier" "$host1" "$host2"
+    sqs_send_vpn_payload "$resourcetier"
   elif [[ "$sqs_send_deadline_payload" == "true" ]]; then
-    sqs_send_deadline_payload "$resourcetier" "$host1" "$host2"
+    sqs_send_deadline_payload "$resourcetier"
   fi
 
   log_info "Complete!"

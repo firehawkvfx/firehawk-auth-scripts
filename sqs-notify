@@ -144,6 +144,7 @@ function main {
   local append_json="{}"
   local ttl_mins="$DEFAULT_TTL_MINS"
   local use_limit="$DEFAULT_USE_LIMIT"
+  local purge_only="false"
 
   while [[ $# > 0 ]]; do
     local key="$1"
@@ -181,6 +182,9 @@ function main {
         use_limit="$2"
         shift
         ;;
+      --purge-only)
+        purge_only="true"
+        ;;
       --help)
         print_usage
         exit
@@ -195,29 +199,34 @@ function main {
     shift
   done
 
-  error_if_empty "Argument resourcetier or env var TF_VAR_resourcetier not provided" "$resourcetier"
-  assert_not_empty "--host1" "$host1"
-  assert_not_empty "--host2" "$host2"
-  assert_either_or "--token" "$token" "--token-policy" "$token_policy"
   assert_not_empty "--sqs-queue-url" "$sqs_queue_url"
 
-  purge_queue "$sqs_queue_url"
+  if [[ "$purge_only" == "true" ]]; then
+    purge_queue "$sqs_queue_url"
+  else
+    error_if_empty "Argument resourcetier or env var TF_VAR_resourcetier not provided" "$resourcetier"
+    assert_not_empty "--host1" "$host1"
+    assert_not_empty "--host2" "$host2"
+    assert_either_or "--token" "$token" "--token-policy" "$token_policy"
 
-  # printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
-  # until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
+    purge_queue "$sqs_queue_url"
 
-  echo ""
-  echo "...Using SQS queue to notify remote clients of VPN credential endpoint.  SSH certs must be configured to use the endpoint."
-  echo "host1: $host1"
-  echo "host2: $host2"
-  echo ""
+    # printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
+    # until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
 
-  if [[ ! -z "$token_policy" ]]; then # if token policy was provided, generate a token, else token must have been provided
-    token="$(vault token create -address="$VAULT_ADDR" -policy=$token_policy -explicit-max-ttl=$ttl_mins -ttl=$ttl_mins -use-limit=$use_limit -field=token)"
+    echo ""
+    echo "...Using SQS queue to notify remote clients of credential endpoint.  SSH certs must be configured to use the endpoint."
+    echo "host1: $host1"
+    echo "host2: $host2"
+    echo ""
+
+    if [[ ! -z "$token_policy" ]]; then # if token policy was provided, generate a token, else token must have been provided
+      token="$(vault token create -address="$VAULT_ADDR" -policy=$token_policy -explicit-max-ttl=$ttl_mins -ttl=$ttl_mins -use-limit=$use_limit -field=token)"
+    fi
+
+    message_content="$(construct_message "$host1" "$host2" "$token" "$ttl_mins" "$append_json")"
+    aws sqs send-message --queue-url $sqs_queue_url --message-body "$message_content" --message-group-id "$resourcetier"
   fi
-
-  message_content="$(construct_message "$host1" "$host2" "$token" "$ttl_mins" "$append_json")"
-  aws sqs send-message --queue-url $sqs_queue_url --message-body "$message_content" --message-group-id "$resourcetier"
 }
 
 main "$@"
