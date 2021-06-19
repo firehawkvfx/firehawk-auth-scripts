@@ -56,6 +56,11 @@ function log {
   >&2 echo -e "${timestamp} [${level}] [$SCRIPT_NAME] ${message}"
 }
 
+function log_bare {
+  local -r message="$1"
+  >&2 echo -e "${message}"
+}
+
 function log_info {
   local -r message="$1"
   log "INFO" "$message"
@@ -229,9 +234,9 @@ function poll_public_signed_cert {
   local -r sqs_queue_url="$(ssm_get_parm "$parm_name")"
 
   # log "...Polling SQS queue for your remote host's signed cert"
-  log ""
-  log "Please confirm on remote host the fingerprint matches below:"
-  log "$fingerprint"
+  log_bare ""
+  log_bare "Please confirm on remote host the fingerprint matches below:"
+  log_bare "$fingerprint"
 
   poll="true"
   while [[ "$poll" == "true" ]]; do
@@ -241,7 +246,7 @@ function poll_public_signed_cert {
       reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
       aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle && echo "$msg" | jq -r '.Messages[] | .Body' 
     fi
-    log "...Awaiting response: $sqs_queue_url"
+    log_bare "...Awaiting response: $sqs_queue_url"
     sleep $DEFAULT_POLL_DURATION
     
   done
@@ -421,19 +426,20 @@ function install {
     received_fingerprint="$(ssh-keygen -l -f $public_key)"
     received_fingerprint=($received_fingerprint)
     received_fingerprint=${received_fingerprint[1]}
+
     read -r -p "Does this match the remote host's fingerprint: $received_fingerprint [Y/n] " input
     case $input in
       [yY][eE][sS]|[yY])
-      log "Yes"
-      ;;
+        log "Yes"
+        ;;
       [nN][oO]|[nN])
-      log "No"
-      exit 1
-      ;;
+        log "No"
+        exit 1
+        ;;
       *)
-      log "Invalid input..."
-      exit 1
-      ;;
+        log "Invalid input: $input"
+        exit 1
+        ;;
     esac
   fi
 
