@@ -236,7 +236,9 @@ function poll_public_signed_cert {
   # log "...Polling SQS queue for your remote host's signed cert"
   log_bare ""
   log_bare "Please confirm on remote host the fingerprint matches below:"
+  log_bare ""
   log_bare "$fingerprint"
+  log_bare ""
 
   poll="true"
   while [[ "$poll" == "true" ]]; do
@@ -301,7 +303,7 @@ function sqs_send_deadline_payload {
   local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
   sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)"    
-  $TF_VAR_firehawk_path/../deploy/firehawk-render-cluster/modules/terraform-aws-sqs-deadline-client/main/modules/firehawk-auth-scripts/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40
+  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40
 }
 
 function install {
