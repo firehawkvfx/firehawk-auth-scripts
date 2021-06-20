@@ -318,6 +318,28 @@ function sqs_purge_deadline {
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --purge-only
 }
 
+function get_cert_from_vault_local {
+  local -r resourcetier="$1"
+  local -r vault_token="$4"
+
+  echo "Request the deadline client certifcate."
+  source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
+  source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
+  tmp_target_path="$HOME/.ssh/_$(basename $source_file_path)"
+  target_path="$HOME/.ssh/$(basename $source_file_path)"
+
+  rm -f $tmp_target_path
+  $SCRIPTDIR/get-vault-file --local --source-vault-path $source_vault_path --target-path $tmp_target_path --vault-token $vault_token
+  mv $tmp_target_path $target_path 
+}
+
+function get_cert_fingerprint {
+  source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
+  target_path="$HOME/.ssh/$(basename $source_file_path)"
+  current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
+  echo "$current_fingerprint"
+}
+
 function sqs_send_deadline_payload {
   local -r resourcetier="$1"
   log "...Aquiring host names for vault queries."
@@ -328,8 +350,15 @@ function sqs_send_deadline_payload {
   until consul catalog services | grep -m 1 "deadline"; do sleep 10 ; done
 
   log "...Updating SQS queue to retrieve a valid token" # TODO we should also drain the queue of any existing messages.
-  sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)"    
-  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40
+  sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)"
+
+  log "...Get deadline cert with local tokent and aquire fingerprint"
+  get_cert_from_vault_local "$resourcetier" "$(cat $HOME/.vault-token)"
+  current_fingerprint="$(get_cert_fingerprint)"
+  append_json="{ \"deadline_client_cert_fingerprint\" : \"$current_fingerprint\" }"
+  # current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
+
+  $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40 --append-json "$append_json"
 }
 
 function install {
