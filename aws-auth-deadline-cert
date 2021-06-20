@@ -220,6 +220,7 @@ function get_cert_fingerprint {
   current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
   current_fingerprint=($current_fingerprint)
   current_fingerprint=${current_fingerprint[1]}
+  current_fingerprint="$(echo $current_fingerprint | awk -F '=' '{print $2}')"
   echo "$current_fingerprint"
 }
 

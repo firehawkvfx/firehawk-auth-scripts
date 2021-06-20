@@ -349,6 +349,7 @@ function get_cert_fingerprint {
   current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
   current_fingerprint=($current_fingerprint)
   current_fingerprint=${current_fingerprint[1]}
+  current_fingerprint="$(echo $current_fingerprint | awk -F '=' '{print $2}')"
   echo "$current_fingerprint"
 }
 
@@ -367,7 +368,7 @@ function sqs_send_deadline_payload {
   log "...Get deadline cert with local tokent and aquire fingerprint"
   get_cert_from_vault_local "$resourcetier" "$(cat $HOME/.vault-token)"
   current_fingerprint="$(get_cert_fingerprint)"
-  append_json="{ \"deadline_client_cert_fingerprint\" : $current_fingerprint }"
+  append_json="{ \"deadline_client_cert_fingerprint\" : \"$current_fingerprint\" }"
   # current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
 
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40 --append-json "$append_json"
