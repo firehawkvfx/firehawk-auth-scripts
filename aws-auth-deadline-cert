@@ -224,7 +224,7 @@ function get_cert_fingerprint {
 function test_service_up {
   local -r deadline_client_cert_fingerprint="$1"
   local_fingerprint="$(get_cert_fingerprint)"
-  if [[ "$deadline_client_cert_fingerprint" == "$local_fingerprint" ]]
+  if [[ "$deadline_client_cert_fingerprint" == "$local_fingerprint" ]]; then
     echo "service is up"
   fi
 }
@@ -269,6 +269,11 @@ function install {
   if [[ "$run_service" == "true" ]]; then
     local -r result="$(poll_sqs_queue $resourcetier)"
     local -r deadline_client_cert_fingerprint=$(echo "$result" | jq -r '.deadline_client_cert_fingerprint')
+
+    if [[ -z "$deadline_client_cert_fingerprint" ]]; then
+      log "No fingerprint / SQS message available to validate with"
+      exit 0
+    fi
 
     if [[ ! -n "$(test_service_up $deadline_client_cert_fingerprint)" ]]; then # if fingerprints do not match, aquire the rest of the data in the message to get the certificate
       log "Deadline cert fingerprint is not current (No Match).  Will update. Fingerprint: $deadline_client_cert_fingerprint"
