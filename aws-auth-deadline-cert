@@ -290,21 +290,25 @@ function poll_sqs_queue {
   done
 }
 
-function get_cert_fingerprint {
-  source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-  target_path="$HOME/.ssh/$(basename $source_file_path)"
-  current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
-  current_fingerprint=($current_fingerprint)
-  current_fingerprint=${current_fingerprint[1]}
-  current_fingerprint="$(echo $current_fingerprint | awk -F '=' '{print $2}')"
-  echo "$current_fingerprint"
-}
+# function get_cert_fingerprint {
+
+#   current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
+#   current_fingerprint=($current_fingerprint)
+#   current_fingerprint=${current_fingerprint[1]}
+#   current_fingerprint="$(echo $current_fingerprint | awk -F '=' '{print $2}')"
+#   echo "$current_fingerprint"
+# }
 
 function test_service_up {
   local -r deadline_client_cert_fingerprint="$1"
-  local_fingerprint="$(get_cert_fingerprint)"
-  if [[ "$deadline_client_cert_fingerprint" == "$local_fingerprint" ]]; then
-    echo "service is up"
+
+  source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
+  target_path="$HOME/.ssh/$(basename $source_file_path)"
+  if test -f "$target_path"; then
+    local_fingerprint="$($SCRIPTDIR/get_cert_fingerprint.sh \"$target_path\")"
+    if [[ "$deadline_client_cert_fingerprint" == "$local_fingerprint" ]]; then
+      echo "service is up"
+    fi
   fi
 }
 
