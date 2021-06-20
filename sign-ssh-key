@@ -205,6 +205,12 @@ function sqs_send_file {
   file_content="$(cat $file_path)"
   log "...Sending $file_path to $sqs_queue_url"
   aws sqs send-message --queue-url $sqs_queue_url --message-body "$file_content" --message-group-id "$resourcetier"
+  
+  log "Ensuring message is in queue"
+  queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
+  if [[ "$queue_msgs" -eq 0 ]]; then 
+    log "...Sent message not in queue."
+  fi
   # log "Test recieve message"
   # aws sqs receive-message --queue-url $sqs_queue_url
 }
