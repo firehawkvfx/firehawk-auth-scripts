@@ -97,10 +97,12 @@ function purge_queue {
     local msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
     if [[ ! -z "$msg" ]]; then
       local reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
+      
       output=$(aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle) && exit_status=0 || exit_status=$?
+
       if [[ $exit_status -eq 0 ]]; then
         log "Message deleted. output: $output"
-      fi
+      else
         log "Failed to delete message. reciept_handle: $reciept_handle" # see https://github.com/aws/aws-sdk-js/issues/1279 and https://github.com/aws/aws-sdk-java/issues/705#issuecomment-240207306
       fi
     fi
