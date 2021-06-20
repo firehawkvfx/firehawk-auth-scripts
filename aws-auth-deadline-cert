@@ -368,7 +368,8 @@ function install {
     local -r deadline_client_cert_fingerprint=$(echo "$result" | jq -r '.deadline_client_cert_fingerprint')
     if [[ "$deadline_client_cert_fingerprint" == "null" ]]; then
       log_error "No fingerprint in message.  The invalid message should not have been sent: fingerprint: $deadline_client_cert_fingerprint"
-    elif [[ -z "$deadline_client_cert_fingerprint" ]] || ; then
+      exit 1
+    elif [[ -z "$deadline_client_cert_fingerprint" ]]; then
       log "No SQS message available to validate with yet."
       exit 0
     elif [[ ! -n "$(test_service_up $deadline_client_cert_fingerprint)" ]]; then # if fingerprints do not match, aquire the rest of the data in the message to get the certificate
