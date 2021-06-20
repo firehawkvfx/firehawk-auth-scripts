@@ -276,6 +276,7 @@ function poll_sqs_queue {
     local msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
     if [[ ! -z "$msg" ]]; then
       poll="false"
+      log "recieved msg: $msg" # TODO remove this, contains temporary sensitive data in log
       if [[ "$drain_queue" == true ]]; then
         local reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
         aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle && echo "$msg" | jq -r '.Messages[] | .Body' 
@@ -366,12 +367,10 @@ function install {
     log "...Get fingerprint from SQS Message"
     local -r deadline_client_cert_fingerprint=$(echo "$result" | jq -r '.deadline_client_cert_fingerprint')
 
-    if [[ -z "$deadline_client_cert_fingerprint" ]]; then
-      log "No fingerprint / SQS message available to validate with"
+    if [[ -z "$deadline_client_cert_fingerprint" ]] || [[ "$deadline_client_cert_fingerprint" == "null" ]]; then
+      log "No fingerprint or SQS message available to validate with. fingerprint: $deadline_client_cert_fingerprint"
       exit 0
-    fi
-
-    if [[ ! -n "$(test_service_up $deadline_client_cert_fingerprint)" ]]; then # if fingerprints do not match, aquire the rest of the data in the message to get the certificate
+    elif [[ ! -n "$(test_service_up $deadline_client_cert_fingerprint)" ]]; then # if fingerprints do not match, aquire the rest of the data in the message to get the certificate
       log "Deadline cert fingerprint is not current (No Match).  Will update. Fingerprint: $deadline_client_cert_fingerprint"
       log "...Getting SQS endpoint from SSM Parameter and await SQS message for VPN credentials."
       
