@@ -347,6 +347,8 @@ function get_cert_fingerprint {
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   target_path="$HOME/.ssh/$(basename $source_file_path)"
   current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
+  current_fingerprint=($current_fingerprint)
+  current_fingerprint=${current_fingerprint[1]}
   echo "$current_fingerprint"
 }
 
