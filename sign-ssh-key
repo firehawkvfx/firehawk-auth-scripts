@@ -306,7 +306,7 @@ function sqs_send_vpn_payload {
   until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
 
   openvpn_admin_pw="$(vault kv get -field=value -address="$VAULT_ADDR" -format=json $resourcetier/network/openvpn_admin_pw)"
-  append_json="{ \"openvpn_admin_pw\" : \"$openvpn_admin_pw\" }"
+  append_json="{ \"openvpn_admin_pw\" : $openvpn_admin_pw }"
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_vpn_url" --host1 "$host1" --host2 "$host2" --token-policy vpn_read_config --token-use-limit 4 --append-json "$append_json"
   # $TF_VAR_firehawk_path/modules/terraform-aws-vpn/modules/tf_aws_openvpn/scripts/sqs_notify.sh "$resourcetier" "$sqs_remote_in_vpn_url" "$host1" "$host2"
 }
@@ -355,7 +355,7 @@ function sqs_send_deadline_payload {
   log "...Get deadline cert with local tokent and aquire fingerprint"
   get_cert_from_vault_local "$resourcetier" "$(cat $HOME/.vault-token)"
   current_fingerprint="$(get_cert_fingerprint)"
-  append_json="{ \"deadline_client_cert_fingerprint\" : \"$current_fingerprint\" }"
+  append_json="{ \"deadline_client_cert_fingerprint\" : $current_fingerprint }"
   # current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
 
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40 --append-json "$append_json"
