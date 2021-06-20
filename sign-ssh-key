@@ -290,7 +290,7 @@ function generate_aws_creds_deadline {
 function sqs_purge_vpn {
   local -r resourcetier="$1"
   sqs_remote_in_vpn_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_vpn_url)"    
-  log "...Purging: $sqs_remote_in_vpn_url"
+  log "...Ensuring queue is empty: $sqs_remote_in_vpn_url"
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_vpn_url" --purge-only
 }
 
@@ -314,13 +314,13 @@ function sqs_send_vpn_payload {
 function sqs_purge_deadline {
   local -r resourcetier="$1"
   sqs_remote_in_deadline_cert_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url)" 
-  log "...Purging: $sqs_remote_in_deadline_cert_url"
+  log "...Ensuring queue is empty: $sqs_remote_in_deadline_cert_url"
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --purge-only
 }
 
 function get_cert_from_vault_local {
   local -r resourcetier="$1"
-  local -r vault_token="$4"
+  local -r vault_token="$2"
 
   echo "Request the deadline client certifcate on the localhost."
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
@@ -331,6 +331,7 @@ function get_cert_from_vault_local {
     rm -f $tmp_target_path
   fi
   echo "get-vault-file"
+  set -x
   $SCRIPTDIR/get-vault-file --local --source-vault-path $source_vault_path --target-path $tmp_target_path --vault-token $vault_token
   mv -f $tmp_target_path $target_path 
   echo "Moved file to: $target_path"
