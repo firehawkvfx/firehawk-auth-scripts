@@ -83,7 +83,7 @@ function retrieve_file {
   local -r base_path="/home/$bastion_user/tmp"
   local -r source_path="${base_path}$3"
 
-  echo "Copy: $source_path to localhost: $target_path"
+  log_info "Copy: $source_path to localhost: $target_path"
 
   scp -i ~/.ssh/id_rsa-cert.pub -i ~/.ssh/id_rsa -o ProxyCommand="ssh -i ~/.ssh/id_rsa-cert.pub -i ~/.ssh/id_rsa -W %h:%p $host1" $host2:$source_path "$target_path"
   chmod 0600 "$target_path"
@@ -94,10 +94,10 @@ function retrieve_file {
 
   [[ -s "$target_path" ]] && exit_status=0 || exit_status=1
   if [[ $exit_status -eq 1 ]]; then
-    echo "Error retrieving file"
+    log_info "Error retrieving file"
     exit 1
   else 
-    echo "Success"
+    log_info "Success"
   fi
 }
 
@@ -107,35 +107,35 @@ function stdout_to_file {
 
   errors=$(echo "$response" | jq -r '.errors | length')
   if [[ ! $errors -eq 0 ]]; then
-    echo "Vault request failed: $response"
+    log_info "Vault request failed: $response"
     exit 1
   fi
   
-  echo "mkdir: $(dirname $target_path)"
+  log_info "mkdir: $(dirname $target_path)"
   mkdir -p "$(dirname $target_path)" # ensure the directory exists
-  echo "Check file path is writable: $target_path"
+  log_info "Check file path is writable: $target_path"
   if test -f "$target_path"; then
-    echo "File exists: ensuring it is writeable"
+    log_info "File exists: ensuring it is writeable"
     chmod u+w "$target_path"
     touch "$target_path"
   else
-    echo "Ensuring path is writeable"
+    log_info "Ensuring path is writeable"
     touch "$target_path"
     chmod u+w "$target_path"
   fi
   if [[ -f "$target_path" ]]; then
     chmod u+w "$target_path"
   else
-    echo "Error: path does not exist, var may not be a file: $target_path "
+    log_error "Error: path does not exist, var may not be a file: $target_path "
   fi
 
-  echo "Write file content from stdout..."
+  log_info "Write file content from stdout..."
   echo "$response" | jq -r '.data.data.value' | base64 --decode > $target_path
   if [[ ! -f "$target_path" ]] || [[ -z "$(cat $target_path)" ]]; then
-    echo "Error: no file or empty result at $target_path"
+    log_error "Error: no file or empty result at $target_path"
     exit 1
   fi
-  echo "Request Complete."
+  log_info "Request Complete."
 }
 
 function get_file_stdout() { # uses stdout to retrieve vault data, avoiding the need to store a file on a remote bastion host.
@@ -145,8 +145,8 @@ function get_file_stdout() { # uses stdout to retrieve vault data, avoiding the 
   local -r source_vault_path="$2"
   local -r target_path="$3"
 
-  echo "Local Vault request"
-  echo "Retrieve: $source_vault_path"
+  log_info "Local Vault request"
+  log_info "Retrieve: $source_vault_path"
 
   response=$($SCRIPTDIR/request_stdout.sh "$source_vault_path/file" "$token")
   stdout_to_file "$response" "$target_path"
@@ -159,10 +159,20 @@ function get_file_stdout_proxy() { # uses stdout to retrieve vault data, avoidin
   local -r source_vault_path="$4"
   local -r target_path="$5"
 
-  echo "SSH via: $host1 to: $host2"
-  echo "Retrieve: $source_vault_path"
+  if [[ "$OSTYPE" == "darwin"* ]]; then # if running on a mac, the system wide known hosts file is located below.
+    local -r ssh_known_hosts_path="/usr/local/etc/ssh/ssh_known_hosts"
+  else
+    local -r ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
+  fi
 
-  response=$(ssh -o ProxyCommand="ssh $host1 -W %h:%p" $host2 "bash -s" < $SCRIPTDIR/request_stdout.sh "$source_vault_path/file" "$token")
+  log_info "SSH via: $host1 to: $host2"
+  log_info "Retrieve: $source_vault_path"
+  log_info "HOME: $HOME"
+  # these may help debugging, with -vv as ssh args
+  # set -x
+  # eval `ssh-agent -s`
+  response=$(ssh -i "$HOME/.ssh/id_rsa-cert.pub" -i "$HOME/.ssh/id_rsa" -o UserKnownHostsFile="$ssh_known_hosts_path" -o ProxyCommand="ssh -i \"$HOME/.ssh/id_rsa-cert.pub\" -i \"$HOME/.ssh/id_rsa\" -o UserKnownHostsFile=\"$ssh_known_hosts_path\" $host1 -W %h:%p" $host2 "bash -s" < $SCRIPTDIR/request_stdout.sh "$source_vault_path/file" "$token")
+
   stdout_to_file "$response" "$target_path"
 }
 
@@ -234,8 +244,10 @@ function getfile {
   # retrieve_file "$host1" "$host2" "$source_file_path" "$target_path" "$bastion_user"
 
   if [[ "$local_request" == "false" ]]; then
+    log_info "Aquiring file from Vault with ssh proxy"
     get_file_stdout_proxy "$host1" "$host2" "$VAULT_TOKEN" "$source_vault_path" "$target_path"
   else
+    log_info "Aquiring file from Vault with localhost"
     get_file_stdout "$VAULT_TOKEN" "$source_vault_path" "$target_path"
   fi
 

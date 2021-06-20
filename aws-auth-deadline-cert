@@ -85,6 +85,12 @@ function install_service_launchd { # see https://www.launchd.info/ for further m
   else
     echo "...Service was not loaded."
   fi
+
+  echo "...Removing logs"
+  rm -f $HOME/log.aws-auth-deadline-cert.stdin
+  rm -f $HOME/log.aws-auth-deadline-cert.stdout
+  rm -f $HOME/log.aws-auth-deadline-cert.stderr
+
   # process_list_result=$(launchctl list | grep \"$service_name\") && launchctl unload "$plist_path"
 
   sudo tee "$plist_path" > /dev/null <<EOF
@@ -200,7 +206,7 @@ EOF
 
 function ssm_get_parm {
   local -r parm_name="$1"
-
+  log "...Get ssm parameter"
   output=$(aws ssm get-parameters --with-decryption --names ${parm_name}) && exit_status=0 || exit_status=$?
 
   invalid=$(echo ${output} | jq -r .'InvalidParameters | length')
@@ -219,7 +225,7 @@ function get_cert_from_vault_local {
   local -r resourcetier="$1"
   local -r vault_token="$4"
 
-  echo "Request the deadline client certifcate."
+  log "Request the deadline client certifcate with localhost."
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
   tmp_target_path="$HOME/.ssh/_$(basename $source_file_path)"
@@ -241,7 +247,7 @@ function get_cert_from_vault_proxy {
   # source_vault_path="$resourcetier/data/vpn/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
   # target_path="$SCRIPTDIR/../../openvpn_config/$(basename $source_file_path)"
 
-  echo "Request the deadline client certifcate."
+  log "Request the deadline client certificate from proxy."
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
   tmp_target_path="$HOME/.ssh/_$(basename $source_file_path)"
@@ -301,11 +307,13 @@ function poll_sqs_queue {
 
 function test_service_up {
   local -r deadline_client_cert_fingerprint="$1"
-
+  log "...Try to get fingerprint from local certificate"
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   target_path="$HOME/.ssh/$(basename $source_file_path)"
   if test -f "$target_path"; then
-    local_fingerprint="$($SCRIPTDIR/get_cert_fingerprint.sh \"$target_path\")"
+    log "local certificate exists"
+    local_fingerprint="$($SCRIPTDIR/get_cert_fingerprint.sh $target_path)"
+    log "return result"
     if [[ "$deadline_client_cert_fingerprint" == "$local_fingerprint" ]]; then
       echo "service is up"
     fi
@@ -355,6 +363,7 @@ function install {
 
   if [[ "$run_service" == "true" ]]; then
     local -r result="$(poll_sqs_queue $resourcetier)"
+    log "...Get fingerprint from SQS Message"
     local -r deadline_client_cert_fingerprint=$(echo "$result" | jq -r '.deadline_client_cert_fingerprint')
 
     if [[ -z "$deadline_client_cert_fingerprint" ]]; then
