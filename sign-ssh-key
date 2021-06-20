@@ -77,6 +77,8 @@ function log_error {
   log "ERROR" "$message"
 }
 
+### END HEADER
+
 function error_if_empty {
   if [[ -z "$2" ]]; then
     log_error "$1"
@@ -209,7 +211,9 @@ function sqs_send_file {
   log "Ensuring message is in queue"
   queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
   if [[ "$queue_msgs" -eq 0 ]]; then 
-    log "...Sent message not in queue."
+    log "...Sent message not in queue. ApproximateNumberOfMessages: $queue_msgs"
+  else
+    log "ApproximateNumberOfMessages: $queue_msgs"
   fi
   # log "Test recieve message"
   # aws sqs receive-message --queue-url $sqs_queue_url
@@ -346,11 +350,7 @@ function get_cert_from_vault_local {
 function get_cert_fingerprint {
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   target_path="$HOME/.ssh/$(basename $source_file_path)"
-  current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
-  current_fingerprint=($current_fingerprint)
-  current_fingerprint=${current_fingerprint[1]}
-  current_fingerprint="$(echo $current_fingerprint | awk -F '=' '{print $2}')"
-  echo "$current_fingerprint"
+  $SCRIPTDIR/get_cert_fingerprint.sh "$target_path"
 }
 
 function sqs_send_deadline_payload {
@@ -369,7 +369,6 @@ function sqs_send_deadline_payload {
   get_cert_from_vault_local "$resourcetier" "$(cat $HOME/.vault-token)"
   current_fingerprint="$(get_cert_fingerprint)"
   append_json="{ \"deadline_client_cert_fingerprint\" : \"$current_fingerprint\" }"
-  # current_fingerprint="$(openssl pkcs12 -in $target_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
 
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_deadline_cert_url" --host1 "$host1" --host2 "$host2" --token-policy deadline_client --token-use-limit 40 --append-json "$append_json"
 }
