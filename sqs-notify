@@ -9,7 +9,7 @@ set -e
 # readonly ttl_mins="15m"
 readonly DEFAULT_resourcetier="$TF_VAR_resourcetier"
 readonly DEFAULT_USE_LIMIT="4"
-readonly DEFAULT_TTL_MINS="15m"
+readonly DEFAULT_TTL_MINS="30m"
 readonly VAULT_ADDR=https://vault.service.consul:8200
 # readonly append_json="{}"
 
