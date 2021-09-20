@@ -131,7 +131,7 @@ function stdout_to_file {
 
   log_info "Write file content from stdout..."
   echo "$response" | jq -r '.data.data.value' | base64 --decode > $target_path
-  if [[ ! -f "$target_path" ]] || [[ -z "$(cat $target_path)" ]]; then
+  if [[ ! -f "$target_path" ]] || [[ ! -s "$target_path" ]]; then
     log_error "Error: no file or empty result at $target_path"
     exit 1
   fi

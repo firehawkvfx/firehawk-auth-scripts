@@ -145,7 +145,7 @@ function install {
     case "$key" in
       --resourcetier)
         resourcetier="$2"
-        configure_aws="true"
+        # configure_aws="true"
         shift
         ;;
       --aws-region)
@@ -223,9 +223,9 @@ function install {
     $SCRIPTDIR/init-aws-auth-ssh --resourcetier "$resourcetier" --no-prompts --aws-region "$aws_region" --aws-access-key "$aws_access_key" --aws-secret-key "$aws_secret_key"
 
     # configure_aws="true" aws_region="$aws_region" aws_access_key="$aws_access_key" aws_secret_key="$aws_secret_key" vagrant provision --provision-with bootstrap,vpn
-  else
-    log_error "This script is incomplete. We should be setting up the service here."
   fi
+
+  $SCRIPTDIR/aws-auth-deadline-cert --resourcetier "$resourcetier" --install-service
 
   # echo ""
   # echo "Once the host is up for the first time, you can pair it with your infra by running this to get an SSH certificate:"

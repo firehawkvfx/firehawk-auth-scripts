@@ -20,11 +20,11 @@ function print_usage {
   echo -e "  --resourcetier\tThe environment to use (dev/blue/green/main)"
   echo -e "  --install-service\tInstall a service to regularly check for VPN credentials if there is no VPN tun interface established."
   echo
-  echo "Example: Wait for VPN payload in message queue."
+  echo "Example: Wait for payload in message queue."
   echo
   echo "  aws-auth-deadline-cert --resourcetier dev"
   echo
-  echo "Example: Install as a service to poll for VPN auth payload.  Service will poll 3 times every $DEFAULT_SERVICE_INTERVAL seconds. "
+  echo "Example: Install as a service to poll for auth payload.  Service will poll 3 times every $DEFAULT_SERVICE_INTERVAL seconds. "
   echo
   echo "  aws-auth-deadline-cert --resourcetier dev --install-service"
 }
@@ -163,8 +163,8 @@ Wants=awsauthdeadlinecert.timer
 
 [Service]
 Type=oneshot
-User=deployuser
-Group=deployuser
+User=$USER
+Group=$USER
 ExecStart=$SCRIPTDIR/aws-auth-deadline-cert --resourcetier $resourcetier
 
 [Install]
@@ -187,21 +187,22 @@ EOF
   echo
   echo "...Starting and enabling service on boot"
   echo
-
-  sudo systemctl start awsauthdeadlinecert
-  sudo systemctl enable awsauthdeadlinecert
-
-  echo ""
   echo "Provided you have run init-aws-auth-ssh and have SSH certificates configured, start the service with:"
   echo "sudo systemctl start awsauthdeadlinecert"
   echo "You can enable on boot with:"
   echo "sudo systemctl enable awsauthdeadlinecert"
-  echo ""
+  echo
   echo "You can view the service logs with:"
   echo "sudo journalctl -S today -u awsauthdeadlinecert"
-  echo ""
+  echo
   echo "Or follow live output with:"
   echo "sudo journalctl -f -u awsauthdeadlinecert"
+
+  sudo systemctl start awsauthdeadlinecert
+  sudo systemctl enable awsauthdeadlinecert
+  echo "...Running 'systemctl daemon-reload'"
+  sudo systemctl daemon-reload
+
 }
 
 function ssm_get_parm {
