@@ -85,6 +85,11 @@ function install_service { # see https://opensource.com/article/20/7/systemd-tim
   local -r resourcetier="$1"
   local -r script_dir="$2"
 
+  if [[ -z "$script_dir" ]]; then
+    echo "ERROR no defined script_dir: $script_dir "
+    exit 1
+  fi
+
   var=$1
   sudo tee "/etc/systemd/system/awsauthvpn.service" > /dev/null <<EOF
 [Unit]
@@ -95,7 +100,7 @@ Wants=awsauthvpn.timer
 Type=oneshot
 User=deployuser
 Group=deployuser
-ExecStart=${script_dir}/init-aws-auth-vpn --resourcetier $resourcetier
+ExecStart=$script_dir/init-aws-auth-vpn --resourcetier $resourcetier
 
 [Install]
 WantedBy=multi-user.target
