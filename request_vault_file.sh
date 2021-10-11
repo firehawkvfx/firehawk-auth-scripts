@@ -72,7 +72,7 @@ function retrieve_file {
     exit 1
   fi
   
-  echo "mkdir: $(dirname $target_path)"
+  echo "retrieve_file mkdir: $(dirname $target_path)"
   mkdir -p "$(dirname $target_path)" # ensure the directory exists
   echo "Check file path is writable: $target_path"
   if test -f "$target_path"; then
