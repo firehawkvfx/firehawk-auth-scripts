@@ -254,7 +254,7 @@ function install {
   error_if_empty "Argument resourcetier or env var TF_VAR_resourcetier not provided" "$resourcetier"
 
   if [[ "$install_service" == "true" ]]; then
-    install_service "$resourcetier" "$SCRIPT_DIR"
+    install_service "$resourcetier" "$SCRIPTDIR"
   fi
 
   if [[ "$run_vpn" == "true" ]]; then
