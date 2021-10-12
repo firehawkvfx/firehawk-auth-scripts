@@ -112,7 +112,9 @@ function stdout_to_file {
   fi
   
   log_info "stdout_to_file mkdir: $(dirname $target_path)"
-  mkdir -p "$(dirname $target_path)" # ensure the directory exists
+  sudo mkdir -p "$(dirname $target_path)" # ensure the directory exists
+  sudo chmod u=rwX,g=rwX,o=rwX "$(dirname $target_path)" # ensure accesible permissions.
+  
   log_info "Check file path is writable: $target_path"
   if test -f "$target_path"; then
     log_info "File exists: ensuring it is writeable"
