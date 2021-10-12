@@ -170,15 +170,15 @@ function get_vpn_cert {
   echo "Request the VPN config / certs"
   source_file_path="/usr/local/openvpn_as/scripts/seperate/client.ovpn" # the original file path that was stored in vault
   source_vault_path="$resourcetier/data/vpn/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
-  target_path="$SCRIPTDIR/../../openvpn_config/$(basename $source_file_path)"
+  target_path="$SCRIPTDIR/../openvpn_config/$(basename $source_file_path)"
 
-  rm -f $SCRIPTDIR/../../openvpn_config/client.ovpn
-  rm -f $SCRIPTDIR/../../openvpn_config/openvpn.conf
+  rm -f $SCRIPTDIR/../openvpn_config/client.ovpn
+  rm -f $SCRIPTDIR/../openvpn_config/openvpn.conf
 
   $SCRIPTDIR/get-vault-file --host1 $host1 --host2 $host2 --source-vault-path $source_vault_path --target-path $target_path --vault-token $vault_token
 
   # Replicate file for vpn.  This might be able to be deprecated, or replaced with a move
-  cp -f $SCRIPTDIR/../../openvpn_config/client.ovpn $SCRIPTDIR/../../openvpn_config/openvpn.conf
+  cp -f $SCRIPTDIR/../openvpn_config/client.ovpn $SCRIPTDIR/../openvpn_config/openvpn.conf
 
   # echo "Request the deadline client certifcate."
   # source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
