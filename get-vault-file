@@ -111,7 +111,7 @@ function stdout_to_file {
     exit 1
   fi
   
-  log_info "mkdir: $(dirname $target_path)"
+  log_info "stdout_to_file mkdir: $(dirname $target_path)"
   mkdir -p "$(dirname $target_path)" # ensure the directory exists
   log_info "Check file path is writable: $target_path"
   if test -f "$target_path"; then
