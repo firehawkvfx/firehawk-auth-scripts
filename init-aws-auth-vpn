@@ -83,7 +83,12 @@ function assert_not_empty {
 # }
 function install_service { # see https://opensource.com/article/20/7/systemd-timers for further examples
   local -r resourcetier="$1"
-  local -r script_dir="$2"
+  local -r script_dir="/opt/firehawk-auth-scripts"
+
+  sudo mkdir $script_dir
+  sudo cp -fr $script_dir/* $script_dir
+  sudo chmod -R u=rwX,g=rwX,o=rwX $script_dir
+  sudo chmod u+x,g+x,o+x $script_dir/init-aws-auth-vpn
 
   if [[ -z "$script_dir" ]]; then
     echo "ERROR no defined script_dir: $script_dir "
@@ -254,7 +259,7 @@ function install {
   error_if_empty "Argument resourcetier or env var TF_VAR_resourcetier not provided" "$resourcetier"
 
   if [[ "$install_service" == "true" ]]; then
-    install_service "$resourcetier" "$SCRIPTDIR"
+    install_service "$resourcetier"
   fi
 
   if [[ "$run_vpn" == "true" ]]; then
