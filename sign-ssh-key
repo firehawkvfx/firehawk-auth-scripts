@@ -499,6 +499,9 @@ function install {
     received_fingerprint=${received_fingerprint[1]}
 
     read -r -p "Does this match the remote host's fingerprint: $received_fingerprint [Y/n] " input
+
+    log_bare "Selected: $input"
+
     case $input in
       [yY][eE][sS]|[yY])
         log_bare "Yes"
