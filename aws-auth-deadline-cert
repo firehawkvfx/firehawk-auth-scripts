@@ -243,11 +243,6 @@ function get_cert_from_vault_proxy {
   local -r host2="$3"
   local -r vault_token="$4"
 
-  # echo "Request the VPN config / certs"
-  # source_file_path="/usr/local/openvpn_as/scripts/seperate/client.ovpn" # the original file path that was stored in vault
-  # source_vault_path="$resourcetier/data/vpn/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
-  # target_path="$SCRIPTDIR/../openvpn_config/$(basename $source_file_path)"
-
   log "Request the deadline client certificate from proxy."
   source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
   source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
