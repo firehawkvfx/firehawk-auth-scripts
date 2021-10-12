@@ -83,15 +83,16 @@ function assert_not_empty {
 # }
 function install_service { # see https://opensource.com/article/20/7/systemd-timers for further examples
   local -r resourcetier="$1"
-  local -r script_dir="/opt/firehawk-auth-scripts"
+  local -r target_script_dir="/opt/firehawk-auth-scripts"
+  set -x
+  sudo mkdir $target_script_dir
+  # sudo chmod -R u=rwX,g=rwX,o=rwX $target_script_dir
+  sudo cp -fr $SCRIPTDIR/* $target_script_dir
+  sudo chmod -R u=rwX,g=rwX,o=rwX $target_script_dir
+  sudo chmod u+x,g+x,o+x $target_script_dir/init-aws-auth-vpn
 
-  sudo mkdir $script_dir
-  sudo cp -fr $script_dir/* $script_dir
-  sudo chmod -R u=rwX,g=rwX,o=rwX $script_dir
-  sudo chmod u+x,g+x,o+x $script_dir/init-aws-auth-vpn
-
-  if [[ -z "$script_dir" ]]; then
-    echo "ERROR no defined script_dir: $script_dir "
+  if [[ -z "$target_script_dir" ]]; then
+    echo "ERROR no defined target_script_dir: $target_script_dir "
     exit 1
   fi
 
@@ -105,7 +106,7 @@ Wants=awsauthvpn.timer
 Type=oneshot
 User=deployuser
 Group=deployuser
-ExecStart=$script_dir/init-aws-auth-vpn --resourcetier $resourcetier
+ExecStart=$target_script_dir/init-aws-auth-vpn --resourcetier $resourcetier
 
 [Install]
 WantedBy=multi-user.target
