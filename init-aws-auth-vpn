@@ -277,7 +277,7 @@ function install {
         local -r vault_token=$(echo "$result" | jq -r '.token')
 
         get_vpn_cert "$resourcetier" "$host1" "$host2" "$vault_token"
-        cd /vagrant; ansible-playbook ansible/openvpn.yaml -v --extra-vars "variable_host=localhost openvpn_user=$openvpn_user openvpn_user_pw=$openvpn_user_pw"
+        cd /opt/firehawk-auth-scripts; ansible-playbook ansible/openvpn.yaml -v --extra-vars "variable_host=localhost openvpn_user=$openvpn_user openvpn_user_pw=$openvpn_user_pw"
       else
         log "No payload aquired."
       fi
