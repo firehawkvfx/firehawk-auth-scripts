@@ -88,8 +88,9 @@ function install_service { # see https://opensource.com/article/20/7/systemd-tim
   sudo mkdir -p $target_script_dir
   # sudo chmod -R u=rwX,g=rwX,o=rwX $target_script_dir
   sudo cp -fr $SCRIPTDIR/* $target_script_dir
-  sudo chmod -R u=rwX,g=rwX,o=rwX $target_script_dir
-  sudo chmod u+x,g+x,o+x $target_script_dir/init-aws-auth-vpn
+  sudo chown -R deployuser:deployuser $target_script_dir
+  sudo chmod -R u=rwX,g=rwX,o=rX $target_script_dir
+  sudo chmod u+x,g+x $target_script_dir/init-aws-auth-vpn
 
   if [[ -z "$target_script_dir" ]]; then
     echo "ERROR no defined target_script_dir: $target_script_dir "
