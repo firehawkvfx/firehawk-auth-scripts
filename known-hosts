@@ -176,7 +176,7 @@ function configure_ssh_known_hosts {
     echo "OS Type: darwin"
     sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
     sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
-  elif [[ uname -r | grep -q "Microsoft" ]]; then
+  elif uname -r | grep -q "Microsoft"; then
     echo "OS Type: Windows Subsystem for Linux"
     sudo service ssh restart
   else
