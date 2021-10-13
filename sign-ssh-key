@@ -124,9 +124,14 @@ function configure_cert_restart {
   log_info "Restarting SSH service..."
   # mac / centos / amazon linux, restart ssh service
   if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "OS Type: darwin"
     sudo launchctl unload /System/Library/LaunchDaemons/ssh.plist
     sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+  elif uname -r | grep -q "Microsoft"; then
+    echo "OS Type: Windows Subsystem for Linux"
+    sudo service ssh restart
   else
+    echo "OS Type: other / linux"
     sudo systemctl restart sshd
   fi
 
