@@ -131,6 +131,7 @@ EOF
   echo
 
   sudo systemctl start awsauthvpn
+  sudo systemctl daemon-reload
   sudo systemctl enable awsauthvpn
 
   echo ""
