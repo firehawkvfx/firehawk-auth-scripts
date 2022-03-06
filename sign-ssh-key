@@ -203,17 +203,34 @@ function ssm_get_parm {
   log "Result: ${output}"
 }
 
+function queue_msg_count {
+  local -r sqs_queue_url="$1"
+  queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
+  echo "$queue_msgs"
+}
+
 function sqs_send_file {
   local -r resourcetier="$1"
   local -r file_path="$2"
   local -r parm_name="$3"
   sqs_queue_url="$(ssm_get_parm $parm_name)"
+
+  log "Ensuring queue is empty before sending message..."
+  queue_msgs="$(queue_msg_count $sqs_queue_url)"
+  while [[ ! "$queue_msgs" -eq 0 ]]; do
+    queue_msgs="$(queue_msg_count $sqs_queue_url)"
+    log "Queue msg count: $queue_msgs"
+    log "...Waiting $DEFAULT_POLL_DURATION seconds before retry until empty."
+    sleep $DEFAULT_POLL_DURATION
+  done
+
+  # If ssm parm is empty, this is an error
   error_if_empty "Could not resolve $parm_name" "$sqs_queue_url"
   file_content="$(cat $file_path)"
   log "...Sending $file_path to $sqs_queue_url"
   aws sqs send-message --queue-url $sqs_queue_url --message-body "$file_content" --message-group-id "$resourcetier"
   
-  log "Ensuring message is in queue"
+  log "Ensuring message is in queue: $sqs_queue_url"
   queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
   if [[ "$queue_msgs" -eq 0 ]]; then 
     log "...Sent message not in queue. ApproximateNumberOfMessages: $queue_msgs"
@@ -230,12 +247,15 @@ function poll_public_key {
   local -r sqs_queue_url="$(ssm_get_parm "$parm_name")"
 
   log "...Polling SQS queue for your remote host's public key"
+  log "SQS queue url: $sqs_queue_url"
   poll="true"
   while [[ "$poll" == "true" ]]; do
     local msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
     if [[ ! -z "$msg" ]]; then
       poll="false"
       reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
+      log "Delete msg from $sqs_queue_url"
+      log "msg: $msg"
       aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle && echo "$msg" | jq -r '.Messages[] | .Body' 
     fi
     log "...Waiting $DEFAULT_POLL_DURATION seconds before retry."
@@ -532,6 +552,7 @@ function install {
 
   fingerprint=""
   if [[ "$sqs_send" == "true" ]]; then
+    log_info "Send public key to parameter: /firehawk/resourcetier/$resourcetier/sqs_cloud_in_cert_url"
     sqs_send_file "$resourcetier" "$HOME/.ssh/id_rsa.pub" "/firehawk/resourcetier/$resourcetier/sqs_cloud_in_cert_url"
     fingerprint="$(ssh-keygen -l -f $HOME/.ssh/id_rsa.pub)"
     fingerprint=($fingerprint) # to array
