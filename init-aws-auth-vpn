@@ -84,7 +84,7 @@ function assert_not_empty {
 function install_service { # see https://opensource.com/article/20/7/systemd-timers for further examples
   local -r resourcetier="$1"
   local -r target_script_dir="/opt/firehawk-auth-scripts"
-  set -x
+  # set -x
   sudo mkdir -p $target_script_dir
   # sudo chmod -R u=rwX,g=rwX,o=rwX $target_script_dir
   sudo cp -fr $SCRIPTDIR/* $target_script_dir
