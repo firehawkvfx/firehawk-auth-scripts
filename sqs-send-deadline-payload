@@ -92,8 +92,8 @@ function get_cert_fingerprint {
 function sqs_send_deadline_payload {
   local -r resourcetier="$1"
   log "...Aquiring host names for vault queries."
-  local -r host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output bastion_public_dns)"
-  local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output vault_client_private_dns)"
+  local -r host1="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output --raw bastion_public_dns)"
+  local -r host2="$(cd $TF_VAR_firehawk_path/../firehawk-render-cluster/modules/terraform-aws-vpn/data; terragrunt output --raw vault_client_private_dns)"
 
   printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
   until consul catalog services | grep -m 1 "deadline"; do sleep 10 ; done
