@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 
 # readonly resourcetier="$1"
 # readonly sqs_queue_url="$2"
@@ -233,8 +232,6 @@ function main {
     fi
 
     message_content="$(construct_message "$host1" "$host2" "$token" "$ttl_mins" "$append_json")"
-
-    echo "message_content: $message_content"
 
     aws sqs send-message --queue-url $sqs_queue_url --message-body "$message_content" --message-group-id "$resourcetier"
   fi
