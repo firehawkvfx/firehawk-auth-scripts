@@ -274,7 +274,7 @@ function install {
   elif [[ -z "$ssh_known_hosts" ]]; then # if no trusted ca provided, request it from vault and store in default location.
     ssh_known_hosts="$DEFAULT_SSH_KNOWN_HOSTS"
     log_info "Requesting Vault provide the SSH known hosts CA as a fragment..."
-    request_ssh_known_hosts
+    request_ssh_known_hosts > /dev/null 2>&1 &
   else
     log_info "SSH known hosts CA path provided. Skipping vault request. Copy to standard path..."
     cp -frv "$ssh_known_hosts" "$DEFAULT_SSH_KNOWN_HOSTS"
