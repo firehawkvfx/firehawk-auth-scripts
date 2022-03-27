@@ -100,7 +100,7 @@ function assert_not_empty {
 function request_trusted_ca {
   local -r trusted_ca="$1"
   # Aquire the public CA cert to approve an authority for known hosts.
-  vault read -field=public_key ssh-client-signer/config/ca | sudo tee $trusted_ca > /dev/null 2>&1 &
+  vault read -field=public_key ssh-client-signer/config/ca | sudo tee $trusted_ca
 }
 
 function configure_trusted_ca {
