@@ -164,11 +164,11 @@ function request_sign_public_key {
   log_info "Signing public key"
   
   vault write ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key > /dev/null 2>&1 &
+      public_key=@$public_key
 
   # Save the signed public cert
   vault write -field=signed_key ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key > $cert > /dev/null 2>&1 &
+      public_key=@$public_key > $cert
 }
 
 function get_trusted_ca_ssm {
@@ -294,7 +294,8 @@ function generate_aws_creds {
   local -r aws_backend_role="$1"
   echo ""
   echo "...Generating AWS credentials."
-  local -r aws_creds=$(vault read aws/creds/$aws_backend_role) > /dev/null 2>&1 &
+  #: Suppress output with > /dev/null 2>&1 &
+  local -r aws_creds=$(vault read aws/creds/$aws_backend_role)
   local -r access_key="$(echo "$aws_creds" | awk '/^access_key/ { print $2 ; exit }')"
   local -r secret_key="$(echo "$aws_creds" | awk '/^secret_key/ { print $2 ; exit }')"
   echo ""
@@ -340,7 +341,7 @@ function sqs_send_vpn_payload {
   printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
   until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
 
-  openvpn_admin_pw="$(vault kv get -field=value -address="$VAULT_ADDR" -format=json $resourcetier/network/openvpn_admin_pw)" > /dev/null 2>&1 &
+  openvpn_admin_pw="$(vault kv get -field=value -address="$VAULT_ADDR" -format=json $resourcetier/network/openvpn_admin_pw)"
   append_json="{ \"openvpn_admin_pw\" : $openvpn_admin_pw }"
   $SCRIPTDIR/sqs-notify --sqs-queue-url "$sqs_remote_in_vpn_url" --host1 "$host1" --host2 "$host2" --token-policy vpn_read_config --token-use-limit 4 --append-json "$append_json"
   # $TF_VAR_firehawk_path/modules/terraform-aws-vpn/modules/tf_aws_openvpn/scripts/sqs_notify.sh "$resourcetier" "$sqs_remote_in_vpn_url" "$host1" "$host2"
