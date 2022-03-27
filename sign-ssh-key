@@ -164,11 +164,11 @@ function request_sign_public_key {
   log_info "Signing public key"
   
   vault write ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key > /dev/null 2>&1 &
+      public_key=@$public_key
 
   # Save the signed public cert
   vault write -field=signed_key ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key > $cert > /dev/null 2>&1 &
+      public_key=@$public_key > $cert
 }
 
 function get_trusted_ca_ssm {
