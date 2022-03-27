@@ -164,11 +164,11 @@ function request_sign_public_key {
   log_info "Signing public key"
   
   vault write ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key
+      public_key=@$public_key > /dev/null 2>&1 &
 
   # Save the signed public cert
   vault write -field=signed_key ssh-client-signer/sign/ssh-role \
-      public_key=@$public_key > $cert
+      public_key=@$public_key > $cert > /dev/null 2>&1 &
 }
 
 function get_trusted_ca_ssm {
@@ -563,11 +563,11 @@ function install {
   if [[ "$trusted_ca_via_ssm" == "true" ]]; then
     log_info "Requesting trusted CA via SSM Parameter..."
     trusted_ca="$DEFAULT_TRUSTED_CA"
-    get_trusted_ca_ssm $trusted_ca "$resourcetier"
+    get_trusted_ca_ssm $trusted_ca "$resourcetier" > /dev/null 2>&1 &
   elif [[ -z "$trusted_ca" ]]; then # if no trusted ca provided, request it from vault and store in default location.
     trusted_ca="$DEFAULT_TRUSTED_CA"
     log_info "Requesting Vault provide the trusted CA..."
-    request_trusted_ca "$trusted_ca"
+    request_trusted_ca "$trusted_ca" > /dev/null 2>&1 &
   else
     log_info "Trusted CA path provided. Skipping vault request. Copy to standard path..."
     cp -frv "$trusted_ca" "$DEFAULT_TRUSTED_CA"
