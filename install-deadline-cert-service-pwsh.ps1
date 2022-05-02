@@ -26,8 +26,8 @@ if (-Not (Test-Path -Path "c:\AppData" -PathType Container)) {
 }
 
 $servicePath = "c:\AppData\myservice.exe"
-$binaryPath = "c:\AppData\test-service.ps1"
-Copy-Item "$PSScriptRoot\test-service.ps1" $binaryPath -Force
+$binaryPath = "c:\AppData\myservice.ps1"
+Copy-Item "$PSScriptRoot\myservice.ps1" $binaryPath -Force
 Copy-Item "$PSScriptRoot\myservice.xml" "c:\AppData\myservice.xml" -Force
 # New-Service -name $serviceName -binaryPathName $binaryPath -displayName $serviceName -startupType Automatic 
 # -credential $mycreds
