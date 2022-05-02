@@ -4,6 +4,6 @@
   <description>This service updates Deadline Certificates with Firehawk.</description>
   <env name="FH_DEADLINE_CERTS_HOME" value="%BASE%"/>
   <executable>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</executable>
-  <startarguments>-NoLogo -file c:\AppData\myservice.ps1</startarguments>
+  <startarguments>-NoLogo -ExecutionPolicy Bypass -File c:\AppData\myservice.ps1</startarguments>
   <log mode="roll"></log>
 </service>

@@ -43,26 +43,27 @@ else {
     "Service Not Present"
 }
 
-"Copy service to target location"
+
 
 # $secpasswd = ConvertTo-SecureString "MyPassword" -AsPlainText -Force
 # $mycreds = New-Object System.Management.Automation.PSCredential (".\$env:UserName", $secpasswd)
-
+"Ensure dir exists"
 if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
     New-Item "$appDir" -ItemType Directory
 }
-
+"Copy service to target location"
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
 # New-Service -name $serviceName -binaryPathName $pwshPath -displayName $serviceName -startupType Automatic 
 # -credential $mycreds
 
-
+"Download winsw"
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
-powershell -ExecutionPolicy Bypass -File $pwshPath
+# "set permissions"
+# powershell -ExecutionPolicy Bypass -File $pwshPath
 "Installing service"
 & "$servicePath" install
-powershell -ExecutionPolicy Bypass -File $pwshPath
+# powershell -ExecutionPolicy Bypass -File $pwshPath
 "start service"
 & "$servicePath" start
 "status service"
