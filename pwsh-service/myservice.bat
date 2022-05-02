@@ -1,1 +1,0 @@
-type myservice.ps1 | powershell -
