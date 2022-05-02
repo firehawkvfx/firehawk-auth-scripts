@@ -3,8 +3,6 @@
 # https://github.com/winsw/winsw/discussions/864
 # https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
 
-
-
 $appDir = "c:\AppData"
 $servicePath = "$appDir\myservice.exe"
 $pwshPath = "$appDir\myservice.ps1"
@@ -43,10 +41,6 @@ else {
     "Service Not Present"
 }
 
-
-
-# $secpasswd = ConvertTo-SecureString "MyPassword" -AsPlainText -Force
-# $mycreds = New-Object System.Management.Automation.PSCredential (".\$env:UserName", $secpasswd)
 "Ensure dir exists"
 if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
     New-Item "$appDir" -ItemType Directory
@@ -54,8 +48,6 @@ if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
 "Copy service to target location"
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
-# New-Service -name $serviceName -binaryPathName $pwshPath -displayName $serviceName -startupType Automatic 
-# -credential $mycreds
 
 "Download winsw"
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
