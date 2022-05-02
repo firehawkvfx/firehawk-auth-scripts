@@ -3,6 +3,10 @@
 # https://github.com/winsw/winsw/discussions/864
 # https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
 
+$appDir = "c:\AppData"
+$servicePath = "$appDir\myservice.exe"
+$pwshPath = "$appDir\myservice.ps1"
+
 $ErrorActionPreference = "Stop"
 $serviceName = "MyService"
 $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10/WinSW-x64.exe"
@@ -10,6 +14,7 @@ $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10
 if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
     $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
     $serviceToRemove | Remove-CimInstance
+    Remove-Item -Path $appdir\* -Include myservice*
     "Service Removed"
 }
 else {
@@ -21,22 +26,24 @@ else {
 # $secpasswd = ConvertTo-SecureString "MyPassword" -AsPlainText -Force
 # $mycreds = New-Object System.Management.Automation.PSCredential (".\$env:UserName", $secpasswd)
 
-if (-Not (Test-Path -Path "c:\AppData" -PathType Container)) {
-    New-Item "c:\AppData" -ItemType Directory
+# $batPath = "$appDir\myservice.bat"
+
+if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
+    New-Item "$appDir" -ItemType Directory
 }
 
-$servicePath = "c:\AppData\myservice.exe"
-$binaryPath = "c:\AppData\myservice.ps1"
-Copy-Item "$PSScriptRoot\myservice.ps1" $binaryPath -Force
-Copy-Item "$PSScriptRoot\myservice.xml" "c:\AppData\myservice.xml" -Force
-# New-Service -name $serviceName -binaryPathName $binaryPath -displayName $serviceName -startupType Automatic 
+Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
+Copy-Item "$PSScriptRoot\pwsh-service\myservice.bat" $appDir -Force
+Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
+# New-Service -name $serviceName -binaryPathName $pwshPath -displayName $serviceName -startupType Automatic 
 # -credential $mycreds
 
 
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
-powershell -ExecutionPolicy Bypass -File $binaryPath
+powershell -ExecutionPolicy Bypass -File $pwshPath
 & "$servicePath" install
-& "$servicePath" start
-& "$servicePath" status
+powershell -ExecutionPolicy Bypass -File $pwshPath
+# & "$servicePath" start
+# & "$servicePath" status
 
 "Installation Completed"
