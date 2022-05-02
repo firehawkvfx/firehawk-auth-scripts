@@ -34,7 +34,7 @@ Copy-Item "$PSScriptRoot\myservice.xml" "c:\AppData\myservice.xml" -Force
 
 
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
-powershell -ExecutionPolicy Bypass -File $servicePath
+powershell -ExecutionPolicy Bypass -File $binaryPath
 & "$servicePath" install
 & "$servicePath" start
 & "$servicePath" status
