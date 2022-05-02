@@ -21,7 +21,7 @@ function print_usage {
   echo
   echo "Example: Configure AWS credentials and the deadline cert service."
   echo
-  echo "  install-deadline-cert-service --resourcetier dev"
+  echo "  install-deadline-cert-service-bash --resourcetier dev"
 }
 
 function log {

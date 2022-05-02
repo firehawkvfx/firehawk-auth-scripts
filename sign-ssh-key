@@ -490,7 +490,7 @@ function install {
     elif [[ "$aws_backend_role" == "aws-creds-deadline-cert" ]]; then
       echo ""
       echo "You can configure a service to retrieve the deadline certificate dynsamicall on ubuntu / centos / macos with this command:"
-      echo "  install-deadline-cert-service --resourcetier dev" 
+      echo "  install-deadline-cert-service-bash --resourcetier dev" 
       echo ""
       generate_aws_creds_deadline "$aws_backend_role"
       sqs_send_deadline_payload="true"
