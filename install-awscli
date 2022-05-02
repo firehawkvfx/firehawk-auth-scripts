@@ -10,7 +10,7 @@ if [[ -n "$(command -v apt-get)" ]]; then sudo apt-get install jq -y; fi
 cd $TEMP
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.5.4.zip" -o "awscliv2.zip"
 unzip -q awscliv2.zip
-sudo ./aws/install -b /usr/local/bin
+sudo ./aws/install -b /usr/local/bin --update
 aws --version
 
 # for windows
