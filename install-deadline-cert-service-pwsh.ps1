@@ -32,8 +32,10 @@ if (-Not ("$answer".ToLower() -eq 'y')) {
 }
 
 if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
-    $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
-    $serviceToRemove | Remove-CimInstance
+    # $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
+    # $serviceToRemove | Remove-CimInstance
+    & "$servicePath" stop
+    & "$servicePath" uninstall
     Remove-Item -Path $appdir\* -Include myservice*
     "Service Removed"
 }
@@ -48,6 +50,9 @@ if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
 "Copy service to target location"
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
+# bash processes
+Copy-Item "$PSScriptRoot\aws-auth-deadline-cert" $appDir -Force
+Copy-Item "$PSScriptRoot\get-vault-file" $appDir -Force
 
 "Download winsw"
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath

@@ -1,5 +1,7 @@
 Write-Host "Test Service"
 
+$ErrorActionPreference = "Stop"
+
 $Timer = New-Object Timers.Timer
 $Timer.Interval = 10000
 $Timer.Enabled = $True
@@ -9,14 +11,15 @@ $objectEventArgs = @{
     EventName = 'Elapsed'
     SourceIdentifier = 'myservicejob'
     Action = {
-        Write-Host "Do stuff"
+        $resourcetier = "dev"
+
+        $ErrorActionPreference = "Stop"
+        
+        Write-Host "Run aws-auth-deadline-cert"
+        bash /mnt/c/AppData/aws-auth-deadline-cert --resourcetier 'dev'
+        Write-Host "Finished running aws-auth-deadline-cert"
     }
 }
 $Job = Register-ObjectEvent @objectEventArgs
-# $Timer.Start()
-# $Job | Format-List -Property *
 
 Wait-Event
-
-# & $Job.module {$Random}
-# & $Job.module {$Random}
