@@ -51,14 +51,11 @@ Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
 
 "Download winsw"
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
-# "set permissions"
-# powershell -ExecutionPolicy Bypass -File $pwshPath
 "Installing service"
 & "$servicePath" install
-# powershell -ExecutionPolicy Bypass -File $pwshPath
-"start service"
+"Start service"
 & "$servicePath" start
-"status service"
+"Service Status"
 & "$servicePath" status
 
 "Installation Completed"
