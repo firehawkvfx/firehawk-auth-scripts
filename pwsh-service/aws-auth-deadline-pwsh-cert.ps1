@@ -48,11 +48,11 @@ function Poll-Sqs-Queue {
         [string]$parm_name = "/firehawk/resourcetier/$resourcetier/sqs_remote_in_deadline_cert_url",
         [string]$sqs_queue_url = $(SSM-Get-Parm $parm_name),
         [string]$drain_queue = $false,
-        [float]$default_poll_duration = 5
+        [float]$default_poll_duration = 5,
+        [float]$max_count = 1
     )
 
     Write-Host "...Polling SQS queue"
-    $max_count = 3
     $count = 0
     $poll = $true
 
