@@ -3,11 +3,12 @@
 # https://github.com/winsw/winsw/discussions/864
 # https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
 
+$ErrorActionPreference = "Stop"
+
 $appDir = "c:\AppData"
 $servicePath = "$appDir\myservice.exe"
 $pwshPath = "$appDir\myservice.ps1"
 
-$ErrorActionPreference = "Stop"
 $serviceName = "MyService"
 $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10/WinSW-x64.exe"
 
