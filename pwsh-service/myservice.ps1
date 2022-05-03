@@ -14,9 +14,10 @@ $objectEventArgs = @{
         $resourcetier = "dev"
 
         $ErrorActionPreference = "Stop"
-        
+
         Write-Host "Run aws-auth-deadline-cert"
-        bash /mnt/c/AppData/aws-auth-deadline-cert --resourcetier 'dev'
+        # bash /mnt/c/AppData/aws-auth-deadline-cert --resourcetier 'dev'
+        & "$PSScriptRoot/aws-auth-deadline-pwsh-cert.ps1" -resourcetier 'REPLACE_WITH_RESOURCETIER'
         Write-Host "Finished running aws-auth-deadline-cert"
     }
 }

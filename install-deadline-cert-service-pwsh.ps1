@@ -1,7 +1,13 @@
+#Requires -Version 7.0
+
 # See:
 # https://www.reddit.com/r/PowerShell/comments/jymq50/creating_a_windows_service_to_run_script_every/
 # https://github.com/winsw/winsw/discussions/864
 # https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md
+
+param (
+    [parameter(mandatory)][ValidateSet("dev","green","blue")][string]$resourcetier
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -14,15 +20,7 @@ $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10
 
 # powershell -Command "Start-Process 'C:\Windows\SysWOW64\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
 # powershell -Command "Start-Process 'C:\Windows\system32\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
-Write-Host '1) Ensure you have opened:
-C:\Windows\SysWOW64\cmd.exe
-2) run:
-powershell Set-ExecutionPolicy RemoteSigned
-3) Next open:
-C:\Windows\system32\cmd.exe 
-4) and run:
-powershell Set-ExecutionPolicy RemoteSigned
-5) Then you can run this script in a powershell 7 shell (with 
+Write-Host 'Ensure you run this script in a powershell 7 shell (with 
 admin priviledges) to install the service.
 '
 
@@ -52,8 +50,11 @@ if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
 Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
 # bash processes
-Copy-Item "$PSScriptRoot\aws-auth-deadline-cert" $appDir -Force
+Copy-Item "$PSScriptRoot\pwsh-service\aws-auth-deadline-pwsh-cert.ps1" $appDir -Force
 Copy-Item "$PSScriptRoot\get-vault-file" $appDir -Force
+
+"Replace env in service file with: $resoucetier"
+(Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_RESOURCETIER", "$resourcetier" | Set-Content $appDir\myservice.ps1
 
 "Download winsw"
 Invoke-WebRequest $myDownloadUrl -OutFile $servicePath

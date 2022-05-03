@@ -255,10 +255,8 @@ function getfile {
 
   if test -f $target_path; then
     log_info "File aquired!"
-    # cd "$EXECDIR"
   else
-    log_info "Could not aquire data. Aborting.";
-    # cd "$EXECDIR"
+    log_info "Could not aquire data. Aborting."
     exit 1;
   fi
 }

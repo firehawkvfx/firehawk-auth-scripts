@@ -272,7 +272,7 @@ function poll_sqs_queue {
     local msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
     if [[ ! -z "$msg" ]]; then
       poll="false"
-      log "recieved msg: $msg" # TODO remove this, contains temporary sensitive data in log
+      # log "recieved msg: $msg" # TODO remove this, contains temporary sensitive data in log
       if [[ "$drain_queue" == true ]]; then
         local reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
         aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle && echo "$msg" | jq -r '.Messages[] | .Body' 
