@@ -37,7 +37,7 @@ function Poll-Sqs-Queue {
     .INPUTS
     None. You cannot pipe objects to Poll-Sqs-Queue.
     .OUTPUTS
-    System.String. Poll-Sqs-Queue returns a string.
+    System.String. Poll-Sqs-Queue returns nothing.
     .EXAMPLE
     PS> Poll-Sqs-Queue -resourcetier 'dev'
     .LINK
