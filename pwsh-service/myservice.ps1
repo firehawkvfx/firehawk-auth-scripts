@@ -1,6 +1,6 @@
 #Requires -Version 7.0
 
-Write-Host "Test Service"
+Write-Host "Start Service"
 
 # $ErrorActionPreference = "Stop"
 
@@ -18,7 +18,7 @@ function Main {
                 $resourcetier = "dev"
                 Write-Host "Run aws-auth-deadline-cert"
                 # bash /mnt/c/AppData/aws-auth-deadline-cert --resourcetier 'dev'
-                C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier 'REPLACE_WITH_RESOURCETIER'
+                C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier 'REPLACE_WITH_RESOURCETIER' -deadline_user_name 'REPLACE_WITH_DEADLINE_USER_NAME' -aws_region 'REPLACE_WITH_AWS_REGION' -aws_access_key 'REPLACE_WITH_AWS_ACCESS_KEY' -aws_secret_key 'REPLACE_WITH_AWS_SECRET_KEY'
                 Write-Host "Finished running aws-auth-deadline-cert"
             } catch {
                 Write-Warning "Error in service Action{} block"
