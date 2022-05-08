@@ -62,6 +62,7 @@ function retrieve_file {
     local -r target_path="$2"
   fi
   echo "Aquiring vault data... $source_path to $target_path"
+  echo "Get secret from vault to file"
   response=$(retry \
   "curl --header 'X-Vault-Token: $VAULT_TOKEN' https://vault.service.consul:8200/v1/$source_path/file" \
   "Trying to read secret from vault")

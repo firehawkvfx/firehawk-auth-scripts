@@ -10,9 +10,9 @@ token="$2"
 
 # Log the given message. All logs are written to stderr with a timestamp.
 function log {
- local -r message="$1"
- local -r timestamp=$(date +"%Y-%m-%d %H:%M:%S")
- >&2 echo -e "$timestamp $message"
+  local -r message="$1"
+  local -r timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  >&2 echo -e "$timestamp $message"
 }
 
 # A retry function that attempts to run a command a number of times and returns the output
@@ -44,7 +44,7 @@ function retry {
 
 # And use the token to perform operations on vault such as reading a secret
 # These is being retried because race conditions were causing this to come up null sometimes
-
+log "Get secret from vault for stdout"
 response=$(retry \
   "curl --fail -H 'X-Vault-Token: $token' -X GET https://vault.service.consul:8200/v1/$source_vault_path" \
   "Trying to read secret from vault")
