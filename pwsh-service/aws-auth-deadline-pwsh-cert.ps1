@@ -1,7 +1,11 @@
 #Requires -Version 7.0
 
 param (
-    [parameter(mandatory)][string]$resourcetier
+    [parameter(mandatory)][string]$resourcetier,
+    [parameter(mandatory)][string]$deadline_user_name,
+    [parameter(mandatory)][string]$aws_region,
+    [parameter(mandatory)][string]$aws_access_key,
+    [parameter(mandatory)][string]$aws_secret_key
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,18 +16,37 @@ function SSM-Get-Parm {
     param (
         [string]$parm_name
     )
+    $env:AWS_DEFAULT_REGION = $aws_region
+    $env:AWS_ACCESS_KEY_ID = $aws_access_key
+    $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
+    Write-Host "Curent user: $env:UserName"
     Write-Host "...Get ssm parameter:"
     Write-Host "$parm_name"
-    $output = $(aws ssm get-parameters --with-decryption --output json --names $parm_name | ConvertFrom-Json)
-    $invalid = $($output.InvalidParameters.Length)
-    if ($LASTEXITCODE -eq 0 -and $invalid -eq 0) {
-        $value = $($output.Parameters.Value)
-        return $value
+    Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
+    # & "powershell" 'C:\Program Files\Amazon\AWSCLIV2\aws' ssm get-parameters --with-decryption --output json --names "$parm_name"
+    # & 'C:\Program Files\Amazon\AWSCLIV2\aws' ssm get-parameters --with-decryption --output json --names "$parm_name"
+    # aws ssm get-parameters --with-decryption --output json --names "$parm_name"
+    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' ssm get-parameters --with-decryption --output json --names "$parm_name")
+    # $output = $(aws ssm get-parameters --with-decryption --output json --names "$parm_name")
+    if (-not $LASTEXITCODE -eq 0) {
+        Write-Warning "...Failed retrieving: $parm_name"
+        Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+        Write-Warning "Result: $output"
+        exit(1)
     }
-    Write-Warning "...Failed retrieving: $parm_name"
-    Write-Warning "Result: $output"
-    exit(1)
+    $output = $($output | ConvertFrom-Json)
+    $invalid = $($output.InvalidParameters.Length)
+    if (-not $invalid -eq 0) {
+        Write-Warning "...Failed retrieving: $parm_name"
+        Write-Warning "invalid parameters: $invalid"
+        Write-Warning "Result: $output"
+        exit(1)
+    }
+    $value = $($output.Parameters.Value)
+    Write-Host "Retrieved value: $value"
+    return $value
 }
+
 function Poll-Sqs-Queue {
     <#
     .SYNOPSIS
@@ -58,24 +81,61 @@ function Poll-Sqs-Queue {
 
     while ($poll) {
         $count += 1
-        $msg = "$(aws sqs receive-message --queue-url $sqs_queue_url --output json | ConvertFrom-Json)"
+        Write-Host "aws sqs receive-message --queue-url $sqs_queue_url --output json"
+        $msg = $(aws sqs receive-message --queue-url $sqs_queue_url --output json)
         Write-Host "msg: $msg"
         if ($msg) {
             $poll = $false
+            # check for error in request
+            if (-not $LASTEXITCODE -eq 0) {
+                Write-Error "Error getting msg: $msg"
+                exit(1)
+            }
+            # convert msg from json
+            $msg = $($msg | ConvertFrom-Json)
+
+            # get the message count
+            $count = $($msg.Messages.Count)
+            if ($count -eq 0) {
+                Write-Error "No messages in queue."
+                exit(1)
+            }
+            if ($count -gt 1) {
+                Write-Error "Too many messages in queue. Count: $count"
+                exit(1)
+            }
+            if (-not $count -eq 1) {
+                Write-Error "Message count invalid. Count: $count"
+                exit(1)
+            }
+            
+            # get msg body
+            $body = $($msg.Messages[0].Body)
+            if (-not "$body") {
+                Write-Error "Message body invalid. body: $body"
+                exit(1)
+            }
+            $body = $($body | ConvertFrom-Json)
+
             if ($drain_queue) {
-                $receipt_handle = $($msg.Messages.ReceiptHandle)
+                # receipt handle is required to drain queue
+                $receipt_handle = $($msg.Messages[0].ReceiptHandle)
                 if (-not $LASTEXITCODE -eq 0 -or -not $receipt_handle) {
                     Write-Error "Couldn't get receipt_handle: $receipt_handle"
                     exit(1)
                 }
+                
+                Write-Host "aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle"
                 aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle
                 if (-not $LASTEXITCODE -eq 0) {
-                    return $msg.Messages.Body
-                } else {
+                    return $body
+                }
+                else {
                     Write-Host "Error during aws sqs delete-message"
                 }
-            } else {
-                return $msg.Messages.Body
+            }
+            else {
+                return $body
             }
 
         }
@@ -84,7 +144,8 @@ function Poll-Sqs-Queue {
             if ($max_count -gt 0 -and $count -ge $max_count) {
                 $poll = $false
                 Write-Host "Max count reached."
-            } else {
+            }
+            else {
                 Write-Host "...Waiting $default_poll_duration seconds before retry."
                 Start-Sleep -Seconds $default_poll_duration
             }
@@ -95,7 +156,7 @@ function Poll-Sqs-Queue {
 function Get-Cert-Fingerprint {
     param (
         [parameter(mandatory)][string]$file_path,
-        [string]$cert_password=""
+        [string]$cert_password = ""
     )
     # current_fingerprint="$(openssl pkcs12 -in $file_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
     $certificateObject = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($file_path, $cert_password)
@@ -108,19 +169,21 @@ function Test-Service-Up {
     )
     Write-Host "...Try to get fingerprint from local certificate"
     $source_file_path = "/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-    $target_path="$HOME/.ssh/$($source_file_path | Split-Path -Leaf)"
+    $target_path = "$HOME/.ssh/$($source_file_path | Split-Path -Leaf)"
     if (Test-Path $target_path) {
         Write-Host "Local certificate exists."
-        $local_fingerprint=$(Get-Cert-Fingerprint -file_path $target_path)
+        $local_fingerprint = $(Get-Cert-Fingerprint -file_path $target_path)
         if ($deadline_client_cert_fingerprint -eq $local_fingerprint) {
             return $true
-        } else {
+        }
+        else {
             Write-Host "Local cert fingerprint doesn't match."
             Write-Host "deadline_client_cert_fingerprint: $deadline_client_cert_fingerprint"
             Write-Host "local: $local_fingerprint"
             return $false
         }
-    } else {
+    }
+    else {
         Write-Host "No local certificate exists yet."
     }
 }
@@ -130,17 +193,21 @@ function Get-Cert-From-Vault-Proxy {
         [parameter(mandatory)][string]$resourcetier,
         [parameter(mandatory)][string]$host1,
         [parameter(mandatory)][string]$host2,
-        [parameter(mandatory)][string]$vault_token
+        [parameter(mandatory)][string]$vault_token,
+        [parameter(mandatory)][string]$deadline_user_name
     )
     Write-Host "Request the deadline client certificate from proxy."
-    $source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-    $source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
-    $tmp_target_path="$HOME/.ssh/_$($source_file_path | Split-Path -Leaf)"
-    $target_path="$HOME/.ssh/$($source_file_path | Split-Path -Leaf)"
+    $source_file_path = "/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
+    $source_vault_path = "$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
+    $bash_home="/home/$deadline_user_name"
+    $bash_windows_home="/mnt/c/users/$deadline_user_name"
+    $tmp_target_path = "$bash_windows_home/.ssh/_$($source_file_path | Split-Path -Leaf)"
+    $target_path = "$bash_windows_home/.ssh/$($source_file_path | Split-Path -Leaf)"
     if (Test-Path -Path $tmp_target_path) {
         Remove-Item -Path $tmp_target_path
     }
-    Get-Vault-File -host1 $host1 -host2 $host2 -source_vault_path $source_vault_path -target-path $tmp_target_path -vault-token $vault_token
+    Write-Host "Run: Get-Vault-File -host1 $host1 -host2 $host2 -source_vault_path $source_vault_path -target_path $tmp_target_path -vault_token $vault_token"
+    Get-Vault-File -host1 "$host1" -host2 "$host2" -source_vault_path "$source_vault_path" -tmp_target_path "$tmp_target_path" -target_path "$target_path" -vault_token "$vault_token"
     Move-Item -Path $tmp_target_path -Destination $target_path
 }
 
@@ -149,41 +216,100 @@ function Get-Vault-File {
         [parameter(mandatory)][string]$host1,
         [parameter(mandatory)][string]$host2,
         [parameter(mandatory)][string]$source_vault_path,
-        [parameter(mandatory)][string]$vault_token,
+        [parameter(mandatory)][string]$tmp_target_path,
         [parameter(mandatory)][string]$target_path,
-        [parameter()][string]$local_request=$false
+        [parameter(mandatory)][string]$vault_token,
+        [parameter()][string]$local_request = $false
     )
     
     $env:VAULT_TOKEN = $vault_token
 
-    $bastion_user=$host1.split('@')[0]
-    Write-Host "Aquiring file from Vault"
-    if (-not $local_request) {
-        Write-Host "Aquiring file from Vault with ssh proxy"
-        Get-File-Stdout-Proxy -host1 "$host1" -host2 "$host2" -vault_token "$vault_token" -source_vault_token "$source_vault_path" -target_path "$target_path"
-    } else {
-        Write-Host "Aquiring file from Vault with localhost"
+    # $bastion_user = $host1.split('@')[0]
+    Write-Host "Aquiring file from Vault. local_request: $local_request"
+    if ($local_request -eq $true) {
+        Write-Host "Aquiring file from Vault with localhost. local_request: $local_request"
         Get-File-Stdout-Local -vault_token "$vault_token" -source_vault_path "$source_vault_path" -target_path "$target_path"
     }
+    else {
+        Write-Host "Aquiring file from Vault with ssh proxy"
 
-    if (Test-Path -Path $target_path){
+        
+        # log "Request the deadline client certificate from proxy."
+        # source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
+        # source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
+        # tmp_target_path="$HOME/.ssh/_$(basename $source_file_path)"
+        # target_path="$HOME/.ssh/$(basename $source_file_path)"
+    
+        # rm -f $tmp_target_path
+        $win_script_path = "$PSScriptRoot\get-vault-file"
+        $bash_script_path = $(wsl wslpath -a "'$win_script_path'") # this is broken?
+        $bash_script_path = "/mnt/c/AppData/get-vault-file" # TODO dont do this!
+
+        Write-Host "`$win_script_path = `"$win_script_path`""
+        Write-Host "`$bash_script_path = `"$bash_script_path`""
+        Write-Host "`$host1 = `"$host1`""
+        Write-Host "`$host2 = `"$host2`""
+        Write-Host "`$source_vault_path = `"$source_vault_path`""
+        Write-Host "`$tmp_target_path = `"$tmp_target_path`""
+        Write-Host "`$vault_token = `"$vault_token`""
+
+        # TODO if winodws supports ssh certificates, get this working
+        # Get-File-Stdout-Proxy -host1 "$host1" -host2 "$host2" -vault_token "$vault_token" -source_vault_path "$source_vault_path" -target_path "$target_path"
+        
+        Write-Host "Running: $bash_script_path"
+        # $output = $(bash -c "echo 'test'")
+        $output = $(bash "$bash_script_path" --host1 $host1 --host2 $host2 --source-vault-path $source_vault_path --target-path $tmp_target_path --vault-token $vault_token)
+
+        $message = $_
+        # mv $tmp_target_path $target_path 
+        if (-not $LASTEXITCODE -eq 0) {
+            # $message = $_
+            Write-Warning "...Failed running: $bash_script_path"
+            Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+            Write-Warning "output: $output"
+            Write-Warning "message: $message"
+            exit(1)
+        }
+        $tmp_target_path_win = $(wsl wslpath -w "'$tmp_target_path'")
+        $target_path_win = $(wsl wslpath -w "'$target_path'")
+        Write-Host "Move cert from temp $tmp_target_path_win to $target_path_win"
+        Move-Item -Path $tmp_target_path_win -Destination $target_path_win
+    }
+
+    if (Test-Path -Path $target_path) {
         Write-Host "File acquired!"
-    } else {
-        Write-Warning "Could not aquire data. Aborting."
+    }
+    else {
+        Write-Warning "Could not aquire data. Aborting. Output:"
+        Write-Warning "$_"
         exit(1)
     }
 }
 
 function Get-File-Stdout-Local {
     param (
-        [parameter(mandatory)][string]$token,
+        [parameter(mandatory)][string]$vault_token,
         [parameter(mandatory)][string]$source_vault_path,
         [parameter(mandatory)][string]$target_path
     )
     Write-Host "Local Vault request"
     Write-Host "Retrieve: $source_vault_path"
 
-    response=$(bash $PSScriptRoot/request_stdout.sh "$source_vault_path/file" "$token")
+    $bash_script_path = $(wsl wslpath -a "'$PSScriptRoot\request_stdout.sh'")
+    # bash "$bash_script_path" "$source_vault_path/file" "$vault_token"
+    # if (-not $LASTEXITCODE -eq 0) {
+    #     Write-Warning "...Failed test running: $bash_script_path"
+    #     Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+    #     exit(1)
+    # }
+    Write-Host "bash `"$bash_script_path`" `"$source_vault_path/file`" `"$vault_token`""
+
+    response=$(bash "$bash_script_path" "$source_vault_path/file" "$vault_token")
+    if (-not $LASTEXITCODE -eq 0) {
+        Write-Warning "...Failed running: $bash_script_path"
+        Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+        exit(1)
+    }
     Stdout-To-File -response "$response" -target_path "$target_path"
 }
 
@@ -194,22 +320,38 @@ function Get-File-Stdout-Proxy {
         [parameter(mandatory)][string]$vault_token,
         [parameter(mandatory)][string]$source_vault_path,
         [parameter(mandatory)][string]$target_path,
-        [parameter()][string]$local_request=$false
+        [parameter()][string]$local_request = $false
     )
     if ($IsWindows) {
         # For windows the system wide ssh known_hosts is not known.
-        ssh_known_hosts_path="$HOME/.ssh/known_hosts"
-    } elseif ($IsMacOs) {
-        ssh_known_hosts_path="/usr/local/etc/ssh/ssh_known_hosts"
-    } elseif ($IsLinux) {
-        ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
-    } else {
-        throw "Something has gone wronge because the os could not be determined"
+        # $ssh_known_hosts_path="$HOME/.ssh/known_hosts"
+        # windows will use bash for ssh functions, so this is the bash path.
+        $ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
     }
-
-    response=$(ssh -i "$HOME/.ssh/id_rsa-cert.pub" -i "$HOME/.ssh/id_rsa" -o UserKnownHostsFile="$ssh_known_hosts_path" -o ProxyCommand="ssh -i \"$HOME/.ssh/id_rsa-cert.pub\" -i \"$HOME/.ssh/id_rsa\" -o UserKnownHostsFile=\"$ssh_known_hosts_path\" $host1 -W %h:%p" $host2 "bash -s" < $PSScriptRoot/request_stdout.sh "$source_vault_path/file" "$token" | ConvertFrom-Json)
+    elseif ($IsMacOs) {
+        $ssh_known_hosts_path="/usr/local/etc/ssh/ssh_known_hosts"
+    }
+    elseif ($IsLinux) {
+        $ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
+    }
+    else {
+        throw "Something has gone wrong because the os could not be determined"
+    }
+    Write-Host "`$ssh_known_hosts_path = $ssh_known_hosts_path"
+    Write-Host "`$host1 = $host1"
+    Write-Host "`$host2 = $host2"
+    Write-Host "`$source_vault_path = $source_vault_path"
+    Write-Host "`$vault_token = $vault_token"
+    Set-PSDebug -Trace 1
+    response=$(ssh -i "$HOME\.ssh\id_rsa-cert.pub" -i "$HOME\.ssh\id_rsa" -o UserKnownHostsFile="$ssh_known_hosts_path" -o ProxyCommand="ssh -i \"$HOME/.ssh/id_rsa-cert.pub\" -i \"$HOME/.ssh/id_rsa\" -o UserKnownHostsFile=\"$ssh_known_hosts_path\" $host1 -W %h:%p" $host2 "bash -s" `< $PSScriptRoot/request_stdout.sh "$source_vault_path/file" "$vault_token")
 
     Stdout-To-File -response $response -target_path $target_path
+
+
+
+
+
+
 }
 function Stdout-To-File {
     param (
@@ -229,7 +371,8 @@ function Stdout-To-File {
     if (-not $(Test-Path -Path $target_path)) {
         Write-Warning "Error: no file at $target_path"
         exit(1)
-    } elseif (-not $content) {
+    }
+    elseif (-not $content) {
         Write-Warning "Error: no content in $target_path"
         exit(1)
     }
@@ -240,17 +383,19 @@ function Main {
     param (
         [parameter(mandatory)][string]$resourcetier
     )
-    $result=$(Poll-Sqs-Queue -resourcetier $resourcetier)
+    $result = $(Poll-Sqs-Queue -resourcetier $resourcetier)
     Write-Host "...Get fingerprint from SQS Message"
-    $deadline_client_cert_fingerprint=$($result.deadline_client_cert_fingerprint)
+    $deadline_client_cert_fingerprint = $($result.deadline_client_cert_fingerprint)
     Write-Host "deadline_client_cert_fingerprint: $deadline_client_cert_fingerprint"
     if ($deadline_client_cert_fingerprint -eq "null") {
         Write-Warning "No fingerprint in message.  The invalid message should not have been sent: fingerprint: $deadline_client_cert_fingerprint"
         exit(1)
-    } elseif (-not $deadline_client_cert_fingerprint) {
+    }
+    elseif (-not $deadline_client_cert_fingerprint) {
         Write-Host "No SQS message available to validate with yet."
         exit(0)
-    } elseif (-not $(Test-Service-Up $deadline_client_cert_fingerprint)) {
+    }
+    elseif (-not $(Test-Service-Up $deadline_client_cert_fingerprint)) {
         Write-Host "Deadline cert fingerprint is not current (No Match).  Will update. Fingerprint: $deadline_client_cert_fingerprint"
         Write-Host "...Getting SQS endpoint from SSM Parameter and await SQS message for VPN credentials."
 
@@ -258,13 +403,24 @@ function Main {
             $host1 = $result.host1
             $host2 = $result.host2
             $vault_token = $result.token
-            Get-Cert-From-Vault-Proxy "$resourcetier" "$host1" "$host2" "$vault_token"
-        } else {
+            Get-Cert-From-Vault-Proxy "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
+        }
+        else {
             Write-Host "No payload aquired"
         }
-    } else {
+    }
+    else {
         Write-Host "Deadline certificate matches current remote certificate."
     }
 }
 
-Main -resourcetier $resourcetier
+try {
+    Main -resourcetier $resourcetier
+}
+catch {
+    $message = $_
+    Write-Warning "Error running Main in: $PSCommandPath. $message"
+    Write-Warning "Get-Error"
+    Get-Error
+    exit(1)
+}
