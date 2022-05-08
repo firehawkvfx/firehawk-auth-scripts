@@ -110,10 +110,27 @@ function stdout_to_file {
     log_info "Vault request failed: $response"
     exit 1
   fi
+  target_dir=$(dirname $target_path)
+  log_info "stdout_to_file in dir: $target_dir"
   
-  log_info "stdout_to_file mkdir: $(dirname $target_path)"
-  sudo mkdir -p "$(dirname $target_path)" # ensure the directory exists
-  sudo chmod u=rwX,g=rwX,o=rwX "$(dirname $target_path)" # ensure accesible permissions.
+  if [ ! -d "$target_dir" ]; then
+     log_error "Directory $target_dir DOES NOT exist."
+     exit 1
+  fi
+
+  PERM=$(stat --format "%A" "$target_dir")
+  # log_info "$target_dir $PERM"
+  u=${PERM:1:3}
+  g=${PERM:4:3}
+  o=${PERM:7:3}
+  log_info "$target_dir $u $g $o"
+  if [[ ! "$u" -eq "rwX" ]] || [[ ! "$g" -eq "rwX" ]] || [[ ! "$g" -eq "rwX" ]]; then
+    echo "Dir permissions may prevent suitable access, updating permissions"
+    chmod u=rwX,g=rwX,o=rwX "$target_dir" # ensure accesible permissions.
+  fi
+  # sudo mkdir -p "$(dirname $target_path)" # ensure the directory exists
+  # sudo mkdir -p "$target_dir)" # ensure the directory exists
+  # sudo chmod u=rwX,g=rwX,o=rwX "$target_dir" # ensure accesible permissions.
   
   log_info "Check file path is writable: $target_path"
   if test -f "$target_path"; then
@@ -240,23 +257,23 @@ function getfile {
   bastion_user="$(echo $host2 | awk -F '@' '{print $1}')"
 
   # Retrieve generated secrets from Vault.  Would be better if we can use vault as an intermediary to generate certs.
-  log_info "Aquiring file from Vault"
+  echo "Aquiring file from Vault"
   # These are temproraily disabled, but should be preserved to retain a procedure to store a file from vault remotely.
   # get_file_remote "$host1" "$host2" "$VAULT_TOKEN" "$source_file_path" "$source_vault_path" # This method uses a reqest to store the file remotely.  Recommended only if this is the final destination of the secret.
   # retrieve_file "$host1" "$host2" "$source_file_path" "$target_path" "$bastion_user"
 
   if [[ "$local_request" == "false" ]]; then
-    log_info "Aquiring file from Vault with ssh proxy"
+    echo "Aquiring file from Vault with ssh proxy"
     get_file_stdout_proxy "$host1" "$host2" "$VAULT_TOKEN" "$source_vault_path" "$target_path"
   else
-    log_info "Aquiring file from Vault with localhost"
+    echo "Aquiring file from Vault with localhost"
     get_file_stdout "$VAULT_TOKEN" "$source_vault_path" "$target_path"
   fi
 
   if test -f $target_path; then
-    log_info "File aquired!"
+    echo "File aquired!"
   else
-    log_info "Could not aquire data. Aborting."
+    echo "Could not aquire data. Aborting."
     exit 1;
   fi
 }
