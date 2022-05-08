@@ -124,7 +124,7 @@ function stdout_to_file {
   g=${PERM:4:3}
   o=${PERM:7:3}
   log_info "$target_dir $u $g $o"
-  if [[ ! "$u" -eq "rwX" ]] || [[ ! "$g" -eq "rwX" ]] || [[ ! "$g" -eq "rwX" ]]; then
+  if [[ "$u" != "rwx" ]] || [[ "$g" != "rwx" ]] || [[ "$g" != "rwx" ]]; then
     echo "Dir permissions may prevent suitable access, updating permissions"
     chmod u=rwX,g=rwX,o=rwX "$target_dir" # ensure accesible permissions.
   fi
