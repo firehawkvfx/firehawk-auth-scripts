@@ -90,27 +90,6 @@ function keygen {
   fi
 }
 
-function sign_pub_key_request_with_prompts {
-  resourcetier="$1"
-  $SCRIPTDIR/sign-ssh-key --aws-configure --resourcetier "$resourcetier"
-}
-
-function sign_pub_key_request_no_prompts {
-  local -r resourcetier="$1"
-  local -r aws_region="$2"
-  local -r aws_access_key="$3"
-  local -r aws_secret_key="$4"
-
-  aws configure set default.region "$aws_region"
-  aws configure set aws_access_key_id "$aws_access_key"
-  aws configure set aws_secret_access_key "$aws_secret_key"
-
-  aws sts get-caller-identity
-  # aws ecr get-login | sudo sh
-
-  $SCRIPTDIR/sign-ssh-key --sqs-send --resourcetier "$resourcetier"
-}
-
 function install {
   local resourcetier=""
   local no_prompts="false"
@@ -157,12 +136,29 @@ function install {
 
   error_if_empty "Argument resourcetier or env var TF_VAR_resourcetier not provided" "$resourcetier"
 
+  echo "Install bash packages"
   install_packages
+  echo "Keygen"
   keygen
+  
   if [[ "$no_prompts" == "true" ]]; then
-    sign_pub_key_request_no_prompts "$resourcetier" "$aws_region" "$aws_access_key" "$aws_secret_key"
+    echo "sign_pub_key_request_no_prompts"
+    # sign_pub_key_request_no_prompts "$resourcetier" "$aws_region" "$aws_access_key" "$aws_secret_key"
+    aws configure set default.region "$aws_region"
+    aws configure set aws_access_key_id "$aws_access_key"
+    aws configure set aws_secret_access_key "$aws_secret_key"
+    aws sts get-caller-identity
+    $SCRIPTDIR/sign-ssh-key --sqs-send --resourcetier "$resourcetier"
   else
-    sign_pub_key_request_with_prompts "$resourcetier"
+    echo "sign_pub_key_request_with_prompts"
+    echo
+    echo "To aquire AWS credentials, run the following from the provisioner ec2 instance:"
+    echo "sudo su - ec2-user"
+    echo "cd server"
+    echo "source ./update_vars.sh"
+    echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
+    echo
+    $SCRIPTDIR/sign-ssh-key --aws-configure --resourcetier "$resourcetier"
   fi
 }
 
