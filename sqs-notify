@@ -90,13 +90,16 @@ function purge_queue {
   local -r sqs_queue_url="$1"
 
   # If only one message, drain it.
-  local queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
+  local queue_msgs
+  queue_msgs="$(aws sqs get-queue-attributes --queue-url $sqs_queue_url --attribute-names ApproximateNumberOfMessages | jq -r '.Attributes.ApproximateNumberOfMessages')"
   if [[ "$queue_msgs" -eq 1 ]]; then 
     log "...Draining single existing message in queue."
-    local msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
+    local msg
+    msg="$(aws sqs receive-message --queue-url $sqs_queue_url)"
     if [[ ! -z "$msg" ]]; then
       log "...Get Receipt handle from msg: $msg"
-      local reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
+      local reciept_handle
+      reciept_handle="$(echo "$msg" | jq -r '.Messages[] | .ReceiptHandle')"
       
       output=$(aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $reciept_handle) && exit_status=0 || exit_status=$?
 
