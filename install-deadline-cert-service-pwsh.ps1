@@ -51,6 +51,22 @@ function Main {
     $serviceName = "MyService"
     $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10/WinSW-x64.exe"
 
+    # uninstall service
+    if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
+        # $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
+        # $serviceToRemove | Remove-CimInstance
+        "Stop service..."
+        & "$servicePath" stop
+        "Uninstall service..."
+        & "$servicePath" uninstall
+        "Remove service dir"
+        Remove-Item -Path $appdir\* -Include myservice*
+        "Service Removed"
+    }
+    else {
+        "Service not yet present.  Will install..."
+    }
+
     # powershell -Command "Start-Process 'C:\Windows\SysWOW64\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
     # powershell -Command "Start-Process 'C:\Windows\system32\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
     if (-not $confirm_ps7) {
@@ -88,17 +104,6 @@ function Main {
     }
     # }
 
-    if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
-        # $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
-        # $serviceToRemove | Remove-CimInstance
-        & "$servicePath" stop
-        & "$servicePath" uninstall
-        Remove-Item -Path $appdir\* -Include myservice*
-        "Service Removed"
-    }
-    else {
-        "Service Not Present"
-    }
 
     "Ensure dir exists"
     if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
