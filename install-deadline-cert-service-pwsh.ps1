@@ -132,6 +132,9 @@ function Main {
     "Service Status"
     & "$servicePath" status
 
+    "Install NFS"
+    Enable-WindowsOptionalFeature -FeatureName ServicesForNFS-ClientOnly, ClientForNFS-Infrastructure -Online -NoRestart
+
     "`nInstallation Completed"
     "`nTo observe logs, run:"
     "Get-Content C:\AppData\myservice.out.log -Wait"
