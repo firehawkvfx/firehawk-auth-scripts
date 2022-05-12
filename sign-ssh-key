@@ -167,7 +167,7 @@ function request_sign_public_key {
     fi
   fi
 
-  log_info "Signing public key"
+  log_info "Signing public key (This is not a sensitive/secret value)"
   
   vault write ssh-client-signer/sign/ssh-role \
       public_key=@$public_key
