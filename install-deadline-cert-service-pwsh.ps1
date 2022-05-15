@@ -109,7 +109,7 @@ function Main {
     # Install -WindowsFeature -Name IFS-Client
     Enable-WindowsOptionalFeature -FeatureName ServicesForNFS-ClientOnly, ClientForNFS-Infrastructure -Online -NoRestart
     # mount example
-    # mount.exe -o nolock,hard 10.1.143.59:/rendering.dev.firehawkvfx.com X:
+    # mount.exe -o anon,nolock,hard 10.1.143.59:/rendering.dev.firehawkvfx.com X:
     Write-Host "Configure NFS UID and GID for write access"
     Set-Registry-Value -registryPath "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -name "AnonymousUid" -value "9001"
     Set-Registry-Value -registryPath "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -name "AnonymousGid" -value "9001"
