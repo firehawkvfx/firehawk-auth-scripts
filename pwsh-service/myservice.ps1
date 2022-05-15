@@ -17,8 +17,9 @@ function Main {
             try {
                 $resourcetier = "dev"
                 Write-Host "Run aws-auth-deadline-cert"
-                # bash /mnt/c/AppData/aws-auth-deadline-cert --resourcetier 'dev'
-                C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier 'REPLACE_WITH_RESOURCETIER' -deadline_user_name 'REPLACE_WITH_DEADLINE_USER_NAME' -aws_region 'REPLACE_WITH_AWS_REGION' -aws_access_key 'REPLACE_WITH_AWS_ACCESS_KEY' -aws_secret_key 'REPLACE_WITH_AWS_SECRET_KEY'
+                Set-strictmode -version latest
+                . C:\AppData\myservice-config.ps1
+                C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier $resourcetier -deadline_user_name $deadline_user_name -aws_region $aws_region -aws_access_key $aws_access_key -aws_secret_key $aws_secret_key
                 Write-Host "Finished running aws-auth-deadline-cert"
             } catch {
                 Write-Warning "Error in service Action{} block"

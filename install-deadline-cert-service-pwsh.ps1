@@ -34,7 +34,7 @@
 param (
     [parameter(mandatory=$true)][ValidateSet("dev","green","blue")][string]$resourcetier,
     [parameter(mandatory=$true)][string]$deadline_user_name,
-    # [parameter(mandatory=$false)][switch]$skip_configure_aws = $false,
+    [parameter(mandatory=$false)][switch]$skip_configure_aws = $false,
     [parameter(mandatory=$false)][switch]$confirm_ps7 = $false,
     [parameter(mandatory=$false)][string]$aws_region,
     [parameter(mandatory=$false)][string]$aws_access_key,
@@ -43,10 +43,25 @@ param (
 
 $ErrorActionPreference = "Stop"
 
+function Set-Registry-Value {
+    # Ensure registry key exists and set its Dword value.
+    param (
+        [parameter(mandatory=$true)][string]$registryPath,
+        [parameter(mandatory=$true)][string]$name,
+        [parameter(mandatory=$true)][string]$value
+    )
+    if (-not (Test-Path $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
+    Write-Host "Create key name: $name"
+    New-ItemProperty -Path $registryPath -Name $name -PropertyType "DWord" -Force | Out-Null
+    Write-Host "Set value: $value"
+    New-ItemProperty -Path $registryPath -Name $name -Value $value -PropertyType "DWord" -Force | Out-Null
+}
+
 function Main {
     $appDir = "c:\AppData"
     $servicePath = "$appDir\myservice.exe"
-    $pwshPath = "$appDir\myservice.ps1"
 
     $serviceName = "MyService"
     $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10/WinSW-x64.exe"
@@ -80,30 +95,24 @@ function Main {
         }
     }
 
-    if (-not $aws_region -or -not $aws_access_key -or -not $aws_secret_key) {
-        Write-Host
-        Write-Host "To aquire AWS credentials, run the following from the provisioner ec2 instance:"
-        Write-Host "sudo su - ec2-user"
-        Write-Host "cd server"
-        Write-Host "source ./update_vars.sh"
-        Write-Host "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
-        Write-Host
-        $aws_region = Read-Host -Prompt 'Enter your AWS Region:'
-        $aws_access_key = Read-Host -Prompt 'Enter your AWS Access Key:'
-        $aws_secret_key = Read-Host -Prompt 'Enter your AWS Secret Key:'
-    }
+    # configure NFS
+    # # Set the location to the registry
+    # Set-Location -Path 'HKCU:\Software\'
+    # # Create a new Key
+    # Get-Item -Path 'HKCU:\Software\' | New-Item -Name 'NewTestKey' –Force
 
-    # if configure aws:
-    # if (-not $skip_configure_aws) {
-    $bash_script_path = $(wsl wslpath -a "'$PSScriptRoot\init-aws-auth-ssh'")
-    bash "$bash_script_path" --resourcetier "$resourcetier" --aws-region "$aws_region" --aws-access-key "$aws_access_key" --aws-secret-key "$aws_secret_key" --no-prompts
-    if (-not $LASTEXITCODE -eq 0) {
-        Write-Warning "...Failed running: $bash_script_path"
-        Write-Warning "LASTEXITCODE: $LASTEXITCODE"
-        exit(1)
-    }
-    # }
-
+    # see https://get-carbon.org/Set-RegistryKeyValue.html
+    # test existance https://devblogs.microsoft.com/scripting/update-or-add-registry-key-value-with-powershell/
+    # New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -Name "AnonymousUid" -Value "9001"  -PropertyType "DWord"
+    # New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -Name "AnonymousGid" -Value "9001"  -PropertyType "DWord"
+    Write-Host "Install NFS"
+    # Install -WindowsFeature -Name IFS-Client
+    Enable-WindowsOptionalFeature -FeatureName ServicesForNFS-ClientOnly, ClientForNFS-Infrastructure -Online -NoRestart
+    # mount example
+    # mount.exe -o nolock,hard 10.1.143.59:/rendering.dev.firehawkvfx.com X:
+    Write-Host "Configure NFS UID and GID for write access"
+    Set-Registry-Value -registryPath "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -name "AnonymousUid" -value "9001"
+    Set-Registry-Value -registryPath "HKLM:\SOFTWARE\Microsoft\ClientForNFS\CurrentVersion\Default" -name "AnonymousGid" -value "9001"
 
     "Ensure dir exists"
     if (-Not (Test-Path -Path "$appDir" -PathType Container)) {
@@ -111,18 +120,45 @@ function Main {
     }
     "Copy service to target location"
     Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
+
     Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
     # bash processes
     Copy-Item "$PSScriptRoot\pwsh-service\aws-auth-deadline-pwsh-cert.ps1" $appDir -Force
     Copy-Item "$PSScriptRoot\get-vault-file" $appDir -Force
     Copy-Item "$PSScriptRoot\request_stdout.sh" $appDir -Force
 
-    "Replace env in service file with: $resoucetier"
-    (Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_RESOURCETIER", "$resourcetier" | Set-Content $appDir\myservice.ps1
-    (Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_DEADLINE_USER_NAME", "$deadline_user_name" | Set-Content $appDir\myservice.ps1
-    (Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_AWS_REGION", "$aws_region" | Set-Content $appDir\myservice.ps1
-    (Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_AWS_ACCESS_KEY", "$aws_access_key" | Set-Content $appDir\myservice.ps1
-    (Get-Content $appDir\myservice.ps1) -Replace "REPLACE_WITH_AWS_SECRET_KEY", "$aws_secret_key" | Set-Content $appDir\myservice.ps1    
+    # if configure aws:
+    if (-not $skip_configure_aws) {
+        if (-not $aws_region -or -not $aws_access_key -or -not $aws_secret_key) {
+            Write-Host
+            Write-Host "To aquire AWS credentials, run the following from the provisioner ec2 instance:"
+            Write-Host "sudo su - ec2-user"
+            Write-Host "cd server"
+            Write-Host "source ./update_vars.sh"
+            Write-Host "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
+            Write-Host
+            $aws_region = Read-Host -Prompt 'Enter your AWS Region:'
+            $aws_access_key = Read-Host -Prompt 'Enter your AWS Access Key:'
+            $aws_secret_key = Read-Host -Prompt 'Enter your AWS Secret Key:'
+        }
+
+        Write-Host "Configure AWS for bash home dir"
+        $bash_script_path = $(wsl wslpath -a "'$PSScriptRoot\init-aws-auth-ssh'")
+        bash "$bash_script_path" --resourcetier "$resourcetier" --aws-region "$aws_region" --aws-access-key "$aws_access_key" --aws-secret-key "$aws_secret_key" --no-prompts
+        if (-not $LASTEXITCODE -eq 0) {
+            Write-Warning "...Failed running: $bash_script_path"
+            Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+            exit(1)
+        }
+        Write-Host "Configure AWS for service: myservice-config.ps1"
+        Copy-Item "$PSScriptRoot\pwsh-service\myservice-config.ps1" $appDir -Force
+        "Replace env in service file with: $resourcetier"
+        (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_RESOURCETIER", "$resourcetier" | Set-Content $appDir\myservice-config.ps1
+        (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_DEADLINE_USER_NAME", "$deadline_user_name" | Set-Content $appDir\myservice-config.ps1
+        (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_REGION", "$aws_region" | Set-Content $appDir\myservice-config.ps1
+        (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_ACCESS_KEY", "$aws_access_key" | Set-Content $appDir\myservice-config.ps1
+        (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_SECRET_KEY", "$aws_secret_key" | Set-Content $appDir\myservice-config.ps1    
+    }
     "Download winsw"
     Invoke-WebRequest $myDownloadUrl -OutFile $servicePath
     "Installing service"
@@ -133,6 +169,8 @@ function Main {
     & "$servicePath" status
 
     "`nInstallation Completed"
+    "`nIf this is your first time installing the service, you must reboot for Registry changes"
+    "to allow permissions to write to the network NFS volume."
     "`nTo observe logs, run:"
     "Get-Content C:\AppData\myservice.out.log -Wait"
 }
