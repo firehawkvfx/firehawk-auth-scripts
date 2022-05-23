@@ -23,9 +23,9 @@ function SSM-Get-Parm {
     Write-Host "...Get ssm parameter:"
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
-    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key;`
-        $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
-        ssm get-parameters --with-decryption --output json --names "$parm_name")
+    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
+            $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+            ssm get-parameters --with-decryption --output json --names "$parm_name")
     # $output = $(aws ssm get-parameters --with-decryption --output json --names "$parm_name")
     if (-not $LASTEXITCODE -eq 0) {
         Write-Warning "...Failed retrieving: $parm_name"
@@ -155,8 +155,8 @@ function Poll-Sqs-Queue {
 
 function Get-Cert-Fingerprint {
     param (
-        [parameter(mandatory=$true)][string]$file_path,
-        [parameter(mandatory=$false)][string]$cert_password = ""
+        [parameter(mandatory = $true)][string]$file_path,
+        [parameter(mandatory = $false)][string]$cert_password = ""
     )
     # current_fingerprint="$(openssl pkcs12 -in $file_path -nodes -passin pass: |openssl x509 -noout -fingerprint)"
     $thumbprint = $(New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($file_path, $cert_password)).Thumbprint
@@ -170,7 +170,7 @@ function Test-Service-Up {
     )
     Write-Host "...Try to get fingerprint from local certificate"
     $source_file_path = "/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-    $windows_home="C:\Users\$deadline_user_name"
+    $windows_home = "C:\Users\$deadline_user_name"
     $target_path = "$windows_home\.ssh\$($source_file_path | Split-Path -Leaf)"
     if (Test-Path $target_path) {
         Write-Host "Local certificate exists: $target_path"
@@ -203,7 +203,7 @@ function Get-Cert-From-Secrets-Manager {
     # $source_vault_path = "$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
     # $bash_home="/home/$deadline_user_name"
     # $bash_windows_home="/mnt/c/users/$deadline_user_name"
-    $windows_home="C:\Users\$deadline_user_name"
+    $windows_home = "C:\Users\$deadline_user_name"
     $tmp_target_path = "$windows_home\.ssh\_$($source_file_path | Split-Path -Leaf)"
     $target_path = "$windows_home\.ssh\$($source_file_path | Split-Path -Leaf)"
     if (Test-Path -Path $tmp_target_path) {
@@ -219,32 +219,39 @@ function Mount-NFS {
         [parameter(mandatory)][string]$resourcetier
     )
     Write-Host "Checking if NFS mount exists."
-    $mounts = $(Get-PSDrive "X")
-    Write-Host "mounts: $mounts"
-    if ($mounts) {
-        Write-Host "X: is already mounted"
-        return
+    try {
+        $mounts = $(Get-PSDrive "X")
+        Write-Host "mounts: $mounts"
+        if ($mounts) {
+            Write-Host "X: is already mounted"
+            return
+        }
+        else {
+            throw "No mount exists.  Will attempt to mount"
+        }
     }
-    # if ($mounts -and $mounts.count -gt 0) {
-    #     Write-Host "X: is already mounted"
-    #     return
-    # }
-    # Ensure NFS parm exists
-    Write-Host "Get NFS volume export path."
-    $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/resourcetier/$resourcetier/cloud_nfs_filegateway_export")
-    if (-not $LASTEXITCODE -eq 0) {
-        $message = $_
-        Write-Warning "...Failed."
-        Write-Warning "LASTEXITCODE: $LASTEXITCODE"
-        Write-Warning "output: $cloud_nfs_filegateway_export"
-        Write-Warning "message: $message"
-        exit(1)
-    }
-    # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
+    catch {
+        # if ($mounts -and $mounts.count -gt 0) {
+        #     Write-Host "X: is already mounted"
+        #     return
+        # }
+        # Ensure NFS parm exists
+        Write-Host "Get NFS volume export path."
+        $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/resourcetier/$resourcetier/cloud_nfs_filegateway_export")
+        if (-not $LASTEXITCODE -eq 0) {
+            $message = $_
+            Write-Warning "...Failed."
+            Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+            Write-Warning "output: $cloud_nfs_filegateway_export"
+            Write-Warning "message: $message"
+            exit(1)
+        }
+        # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
 
-    Write-Host "Mount Volume with: `
+        Write-Host "Mount Volume with: `
 mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:"
-    mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+        mount.exe -o anon, nolock, hard $cloud_nfs_filegateway_export X:
+    }
 }
 
 function Get-Secrets-Manager-File {
@@ -284,7 +291,7 @@ function Get-Secrets-Manager-File {
     # $output = $(bash -c "echo 'test'")
     # $output = $(bash "$bash_script_path" --host1 $host1 --host2 $host2 --source-vault-path $source_vault_path --target-path $tmp_target_path --vault-token $vault_token)
     
-    $output=$($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
+    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
 
     # $message = $_
     # mv $tmp_target_path $target_path 
@@ -373,13 +380,13 @@ function Get-File-Stdout-Proxy {
         # For windows the system wide ssh known_hosts is not known.
         # $ssh_known_hosts_path="$HOME/.ssh/known_hosts"
         # windows will use bash for ssh functions, so this is the bash path.
-        $ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
+        $ssh_known_hosts_path = "/etc/ssh/ssh_known_hosts"
     }
     elseif ($IsMacOs) {
-        $ssh_known_hosts_path="/usr/local/etc/ssh/ssh_known_hosts"
+        $ssh_known_hosts_path = "/usr/local/etc/ssh/ssh_known_hosts"
     }
     elseif ($IsLinux) {
-        $ssh_known_hosts_path="/etc/ssh/ssh_known_hosts"
+        $ssh_known_hosts_path = "/etc/ssh/ssh_known_hosts"
     }
     else {
         throw "Something has gone wrong because the os could not be determined"
@@ -434,7 +441,8 @@ function Main {
     if (-not $result) {
         Write-Host "No SQS message available to validate with yet. May already `
 be current, have already be drained or expired."
-    } else {
+    }
+    else {
         Write-Host "...Get fingerprint from SQS Message: $result"
         $deadline_client_cert_fingerprint = $($result.deadline_client_cert_fingerprint).Replace(":", "")
         Write-Host "deadline_client_cert_fingerprint: $deadline_client_cert_fingerprint"
