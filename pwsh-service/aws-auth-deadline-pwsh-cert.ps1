@@ -19,7 +19,8 @@ function SSM-Get-Parm {
     # $env:AWS_DEFAULT_REGION = $aws_region
     # $env:AWS_ACCESS_KEY_ID = $aws_access_key
     # $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
-    Write-Host "Curent user: $env:UserName"
+    # Write-Host ""
+    # Write-Host "Curent user: $env:UserName"
     Write-Host "...Get ssm parameter:"
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
@@ -218,8 +219,9 @@ function Mount-NFS {
     param (
         [parameter(mandatory)][string]$resourcetier
     )
-    Write-Host "Checking if NFS mount exists."
+    
     try {
+        Write-Host "`nChecking if NFS mount exists: Get-PSDrive `"X`""
         $mounts = $(Get-PSDrive "X")
         Write-Host "mounts: $mounts"
         if ($mounts) {
@@ -231,6 +233,7 @@ function Mount-NFS {
         }
     }
     catch {
+        Write-Host "Mount not yet present.  Will mount..."
         # if ($mounts -and $mounts.count -gt 0) {
         #     Write-Host "X: is already mounted"
         #     return
@@ -250,7 +253,15 @@ function Mount-NFS {
 
         Write-Host "Mount Volume with: `
 mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:"
-        mount.exe -o anon, nolock, hard $cloud_nfs_filegateway_export X:
+        mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+        if (-not $LASTEXITCODE -eq 0) {
+            $message = $_
+            Write-Warning "...Failed."
+            Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+            # Write-Warning "output: $cloud_nfs_filegateway_export"
+            Write-Warning "message: $message"
+            exit(1)
+        }
     }
 }
 
@@ -437,6 +448,7 @@ function Main {
     param (
         [parameter(mandatory)][string]$resourcetier
     )
+    Write-Host "`nPoll SQS Queue for certificate."
     $result = $(Poll-Sqs-Queue -resourcetier $resourcetier)
     if (-not $result) {
         Write-Host "No SQS message available to validate with yet. May already `
