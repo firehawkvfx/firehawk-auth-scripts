@@ -75,7 +75,7 @@ function Main {
         "Uninstall service..."
         & "$servicePath" uninstall
         "Remove service dir"
-        Remove-Item -Path $appdir\* -Include myservice*
+        Remove-Item -Path $appdir\* -Include myservice* -Exclude myservice-config.ps1
         "Service Removed"
     }
     else {

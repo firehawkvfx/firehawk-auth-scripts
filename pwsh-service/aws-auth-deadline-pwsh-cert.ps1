@@ -217,6 +217,7 @@ function Get-Cert-From-Secrets-Manager {
 #     param (
 #         [parameter(mandatory)][string]$resourcetier
 #     )
+#     # Ensure NFS parm exists
 #     Write-Host "Get NFS volume export path."
 #     $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/$resourcetier/dev/cloud_nfs_filegateway_export")
 
