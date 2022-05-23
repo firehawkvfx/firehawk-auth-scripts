@@ -213,17 +213,17 @@ function Get-Cert-From-Secrets-Manager {
     # Move-Item -Path $tmp_target_path -Destination $target_path
 }
 
-function Mount-NFS {
-    param (
-        [parameter(mandatory)][string]$resourcetier
-    )
-    Write-Host "Get NFS volume export path."
-    $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/$resourcetier/dev/cloud_nfs_filegateway_export")
+# function Mount-NFS {
+#     param (
+#         [parameter(mandatory)][string]$resourcetier
+#     )
+#     Write-Host "Get NFS volume export path."
+#     $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/$resourcetier/dev/cloud_nfs_filegateway_export")
 
-    Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
+#     Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
 
-    # Write-Host "Mount Volume"
-}
+#     # Write-Host "Mount Volume"
+# }
 
 function Get-Secrets-Manager-File {
     param (
@@ -429,7 +429,7 @@ function Main {
             $host2 = $result.host2
             $vault_token = $result.token
             Get-Cert-From-Secrets-Manager "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
-            Mount-NFS "$resourcetier"
+            # Mount-NFS "$resourcetier"
         }
         else {
             Write-Host "No payload aquired"
@@ -441,7 +441,7 @@ function Main {
     }
     else {
         Write-Host "Deadline certificate matches current remote certificate."
-        Mount-NFS "$resourcetier"
+        # Mount-NFS "$resourcetier"
     }
 }
 
