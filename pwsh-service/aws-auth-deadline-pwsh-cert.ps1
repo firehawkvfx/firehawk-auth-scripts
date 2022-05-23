@@ -265,10 +265,10 @@ function Get-Secrets-Manager-File {
     
     $output=$($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
 
-    $message = $_
+    # $message = $_
     # mv $tmp_target_path $target_path 
     if (-not $LASTEXITCODE -eq 0) {
-        # $message = $_
+        $message = $_
         Write-Warning "...Failed running: $bash_script_path"
         Write-Warning "LASTEXITCODE: $LASTEXITCODE"
         Write-Warning "output: $output"
