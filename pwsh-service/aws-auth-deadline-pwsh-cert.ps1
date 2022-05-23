@@ -31,6 +31,7 @@ function SSM-Get-Parm {
         Write-Warning "...Failed retrieving: $parm_name"
         Write-Warning "LASTEXITCODE: $LASTEXITCODE"
         Write-Warning "Result: $output"
+        Write-Warning "Message: $_"
         exit(1)
     }
     $output = $($output | ConvertFrom-Json)
@@ -213,18 +214,38 @@ function Get-Cert-From-Secrets-Manager {
     # Move-Item -Path $tmp_target_path -Destination $target_path
 }
 
-# function Mount-NFS {
-#     param (
-#         [parameter(mandatory)][string]$resourcetier
-#     )
-#     # Ensure NFS parm exists
-#     Write-Host "Get NFS volume export path."
-#     $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/$resourcetier/dev/cloud_nfs_filegateway_export")
+function Mount-NFS {
+    param (
+        [parameter(mandatory)][string]$resourcetier
+    )
+    Write-Host "Checking if NFS mount exists."
+    $mounts = $(Get-PSDrive "X")
+    Write-Host "mounts: $mounts"
+    if ($mounts) {
+        Write-Host "X: is already mounted"
+        return
+    }
+    # if ($mounts -and $mounts.count -gt 0) {
+    #     Write-Host "X: is already mounted"
+    #     return
+    # }
+    # Ensure NFS parm exists
+    Write-Host "Get NFS volume export path."
+    $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/resourcetier/$resourcetier/cloud_nfs_filegateway_export")
+    if (-not $LASTEXITCODE -eq 0) {
+        $message = $_
+        Write-Warning "...Failed."
+        Write-Warning "LASTEXITCODE: $LASTEXITCODE"
+        Write-Warning "output: $cloud_nfs_filegateway_export"
+        Write-Warning "message: $message"
+        exit(1)
+    }
+    # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
 
-#     Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
-
-#     # Write-Host "Mount Volume"
-# }
+    Write-Host "Mount Volume with: `
+mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:"
+    mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+}
 
 function Get-Secrets-Manager-File {
     param (
@@ -410,40 +431,46 @@ function Main {
         [parameter(mandatory)][string]$resourcetier
     )
     $result = $(Poll-Sqs-Queue -resourcetier $resourcetier)
-    Write-Host "...Get fingerprint from SQS Message"
-    $deadline_client_cert_fingerprint = $($result.deadline_client_cert_fingerprint).Replace(":", "")
-    Write-Host "deadline_client_cert_fingerprint: $deadline_client_cert_fingerprint"
-    if ($deadline_client_cert_fingerprint -eq "null") {
-        Write-Warning "No fingerprint in message.  The invalid message should not have been sent: fingerprint: $deadline_client_cert_fingerprint"
-        exit(1)
-    }
-    elseif (-not $deadline_client_cert_fingerprint) {
-        Write-Host "No SQS message available to validate with yet."
-        exit(0)
-    }
-    elseif (-not $(Test-Service-Up $deadline_client_cert_fingerprint $deadline_user_name)) {
-        Write-Host "Deadline cert fingerprint is not current (No Match).  Will update. Fingerprint: $deadline_client_cert_fingerprint"
-        Write-Host "...Getting SQS endpoint from SSM Parameter and await SQS message for VPN credentials."
-
-        if ($result) {
-            $host1 = $result.host1
-            $host2 = $result.host2
-            $vault_token = $result.token
-            Get-Cert-From-Secrets-Manager "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
-            # Mount-NFS "$resourcetier"
-        }
-        else {
-            Write-Host "No payload aquired"
-        }
-        if (-not $(Test-Service-Up $deadline_client_cert_fingerprint $deadline_user_name)) {
-            Write-Warning "Fingerprint doesn't match after attempted aquisition"
+    if (-not $result) {
+        Write-Host "No SQS message available to validate with yet. May already `
+be current, have already be drained or expired."
+    } else {
+        Write-Host "...Get fingerprint from SQS Message: $result"
+        $deadline_client_cert_fingerprint = $($result.deadline_client_cert_fingerprint).Replace(":", "")
+        Write-Host "deadline_client_cert_fingerprint: $deadline_client_cert_fingerprint"
+        if ($deadline_client_cert_fingerprint -eq "null") {
+            Write-Warning "No fingerprint in message.  The invalid message should not have been sent: fingerprint: $deadline_client_cert_fingerprint"
             exit(1)
         }
+        elseif (-not $deadline_client_cert_fingerprint) {
+            Write-Host "No deadline_client_cert_fingerprint available to validate with yet."
+            exit(0)
+        }
+        elseif (-not $(Test-Service-Up $deadline_client_cert_fingerprint $deadline_user_name)) {
+            Write-Host "Deadline cert fingerprint is not current (No Match).  Will update. Fingerprint: $deadline_client_cert_fingerprint"
+            Write-Host "...Getting SQS endpoint from SSM Parameter and await SQS message for VPN credentials."
+
+            if ($result) {
+                $host1 = $result.host1
+                $host2 = $result.host2
+                $vault_token = $result.token
+                Get-Cert-From-Secrets-Manager "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
+                Mount-NFS "$resourcetier"
+            }
+            else {
+                Write-Host "No payload aquired"
+            }
+            if (-not $(Test-Service-Up $deadline_client_cert_fingerprint $deadline_user_name)) {
+                Write-Warning "Fingerprint doesn't match after attempted aquisition"
+                exit(1)
+            }
+        }
+        else {
+            Write-Host "Deadline certificate matches current remote certificate."
+            
+        }
     }
-    else {
-        Write-Host "Deadline certificate matches current remote certificate."
-        # Mount-NFS "$resourcetier"
-    }
+    Mount-NFS "$resourcetier"
 }
 
 try {
