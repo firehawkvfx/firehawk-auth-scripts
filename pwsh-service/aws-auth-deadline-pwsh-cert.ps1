@@ -16,14 +16,16 @@ function SSM-Get-Parm {
     param (
         [string]$parm_name
     )
-    $env:AWS_DEFAULT_REGION = $aws_region
-    $env:AWS_ACCESS_KEY_ID = $aws_access_key
-    $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
+    # $env:AWS_DEFAULT_REGION = $aws_region
+    # $env:AWS_ACCESS_KEY_ID = $aws_access_key
+    # $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
     Write-Host "Curent user: $env:UserName"
     Write-Host "...Get ssm parameter:"
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
-    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' ssm get-parameters --with-decryption --output json --names "$parm_name")
+    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key;`
+        $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+        ssm get-parameters --with-decryption --output json --names "$parm_name")
     # $output = $(aws ssm get-parameters --with-decryption --output json --names "$parm_name")
     if (-not $LASTEXITCODE -eq 0) {
         Write-Warning "...Failed retrieving: $parm_name"
@@ -209,6 +211,18 @@ function Get-Cert-From-Secrets-Manager {
     Write-Host "Run: Get-Secrets-Manager-File"
     Get-Secrets-Manager-File -tmp_target_path "$tmp_target_path" -target_path "$target_path"
     # Move-Item -Path $tmp_target_path -Destination $target_path
+}
+
+function Mount-NFS {
+    param (
+        [parameter(mandatory)][string]$resourcetier
+    )
+    Write-Host "Get NFS volume export path."
+    $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/$resourcetier/dev/cloud_nfs_filegateway_export")
+
+    Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
+
+    # Write-Host "Mount Volume"
 }
 
 function Get-Secrets-Manager-File {
@@ -415,6 +429,7 @@ function Main {
             $host2 = $result.host2
             $vault_token = $result.token
             Get-Cert-From-Secrets-Manager "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
+            Mount-NFS "$resourcetier"
         }
         else {
             Write-Host "No payload aquired"
@@ -426,6 +441,7 @@ function Main {
     }
     else {
         Write-Host "Deadline certificate matches current remote certificate."
+        Mount-NFS "$resourcetier"
     }
 }
 
