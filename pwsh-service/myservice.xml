@@ -2,6 +2,9 @@
   <id>myservice</id>
   <name>MyService</name>
   <description>This service updates Deadline Certificates with Firehawk.</description>
+  <serviceaccount>
+    <prompt>dialog|console</prompt>
+  <serviceaccount>
   <env name="FH_DEADLINE_CERTS_HOME" value="%BASE%"/>
   <executable>C:\Program Files\PowerShell\7\pwsh.exe</executable>
   <startarguments>-NoLogo -ExecutionPolicy Bypass -File c:\AppData\myservice.ps1</startarguments>
