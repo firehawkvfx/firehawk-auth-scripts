@@ -23,6 +23,7 @@ function Main {
                 Write-Host "Finished running aws-auth-deadline-cert"
             } catch {
                 Write-Warning "Error in service Action{} block"
+                Write-Warning "Message: $_"
                 exit(1)
             }
         }
