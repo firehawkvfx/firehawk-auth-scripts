@@ -75,7 +75,7 @@ function Main {
         "Uninstall service..."
         & "$servicePath" uninstall
         "Remove service dir"
-        Remove-Item -Path $appdir\* -Include myservice* -Exclude myservice-config.ps1
+        Remove-Item -Path $appdir\* -Include myservice* -Exclude myservice-config.ps1,myservice.xml
         "Service Removed"
     }
     else {
@@ -122,7 +122,7 @@ function Main {
     "Copy service to target location"
     Copy-Item "$PSScriptRoot\pwsh-service\myservice.ps1" $appDir -Force
 
-    Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
+    # Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
     # bash processes
     Copy-Item "$PSScriptRoot\pwsh-service\aws-auth-deadline-pwsh-cert.ps1" $appDir -Force
     Copy-Item "$PSScriptRoot\get-vault-file" $appDir -Force
@@ -143,6 +143,10 @@ function Main {
             $aws_secret_key = Read-Host -Prompt 'Enter your AWS Secret Key:'
         }
 
+        if (-not $deadline_user_pass) {
+            $deadline_user_pass = Read-Host -Prompt "Enter your windows password for the service to run as ${deadline_user_name}:"
+        }
+
         Write-Host "Configure AWS for bash home dir"
         $bash_script_path = $(wsl wslpath -a "'$PSScriptRoot\init-aws-auth-ssh'")
         bash "$bash_script_path" --resourcetier "$resourcetier" --aws-region "$aws_region" --aws-access-key "$aws_access_key" --aws-secret-key "$aws_secret_key" --no-prompts
@@ -153,12 +157,15 @@ function Main {
         }
         Write-Host "Configure AWS for service: myservice-config.ps1"
         Copy-Item "$PSScriptRoot\pwsh-service\myservice-config.ps1" $appDir -Force
+        Copy-Item "$PSScriptRoot\pwsh-service\myservice.xml" $appDir -Force
         "Replace env in service file with: $resourcetier"
         (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_RESOURCETIER", "$resourcetier" | Set-Content $appDir\myservice-config.ps1
         (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_DEADLINE_USER_NAME", "$deadline_user_name" | Set-Content $appDir\myservice-config.ps1
         (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_REGION", "$aws_region" | Set-Content $appDir\myservice-config.ps1
         (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_ACCESS_KEY", "$aws_access_key" | Set-Content $appDir\myservice-config.ps1
         (Get-Content $appDir\myservice-config.ps1) -Replace "REPLACE_WITH_AWS_SECRET_KEY", "$aws_secret_key" | Set-Content $appDir\myservice-config.ps1    
+        (Get-Content $appDir\myservice.xml) -Replace "REPLACE_WITH_DEADLINE_USER_NAME", "$deadline_user_name" | Set-Content $appDir\myservice.xml
+        (Get-Content $appDir\myservice.xml) -Replace "REPLACE_WITH_DEADLINE_USER_PASS", "$deadline_user_pass" | Set-Content $appDir\myservice.xml
     }
     "Download winsw"
     Invoke-WebRequest $myDownloadUrl -OutFile $servicePath

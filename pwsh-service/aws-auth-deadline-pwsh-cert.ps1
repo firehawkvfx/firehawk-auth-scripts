@@ -221,11 +221,13 @@ function Mount-NFS {
     )
     
     try {
-        Write-Host "`nChecking if NFS mount exists: Get-PSDrive `"X`""
-        $mounts = $(Get-PSDrive "X")
+        Write-Host "`nChecking if NFS mount exists: Test-Path `"X:\`" -PathType Container"
+        $mounts = $(Test-Path "X:\" -PathType Container)
         Write-Host "mounts: $mounts"
         if ($mounts) {
             Write-Host "X: is already mounted"
+            $dir_content = $(ls X:\)
+            Write-Host "dir_content: $dir_content"
             return
         }
         else {
