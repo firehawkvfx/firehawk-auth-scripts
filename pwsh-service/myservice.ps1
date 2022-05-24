@@ -10,18 +10,24 @@ function Main {
     $Timer.Enabled = $True
     $Timer.AutoReset = $True
     $objectEventArgs = @{
-        InputObject = $Timer
-        EventName = 'Elapsed'
+        InputObject      = $Timer
+        EventName        = 'Elapsed'
         SourceIdentifier = 'myservicejob'
-        Action = {
+        Action           = {
             try {
                 $resourcetier = "dev"
-                Write-Host "Run aws-auth-deadline-cert"
+                Write-Host "Run aws-auth-deadline-cert`nCurent user: $env:UserName"
                 Set-strictmode -version latest
-                . C:\AppData\myservice-config.ps1
-                C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier $resourcetier -deadline_user_name $deadline_user_name -aws_region $aws_region -aws_access_key $aws_access_key -aws_secret_key $aws_secret_key
+                if (Test-Path -Path C:\AppData\myservice-config.ps1) {
+                    . C:\AppData\myservice-config.ps1
+                    C:\AppData\aws-auth-deadline-pwsh-cert.ps1 -resourcetier $resourcetier -deadline_user_name $deadline_user_name -aws_region $aws_region -aws_access_key $aws_access_key -aws_secret_key $aws_secret_key
+                }
+                else {
+                    Write-Warning "C:\AppData\myservice-config.ps1 does not exist.  Install the service again and do not use the -skip_configure_aws argument"
+                }
                 Write-Host "Finished running aws-auth-deadline-cert"
-            } catch {
+            }
+            catch {
                 Write-Warning "Error in service Action{} block"
                 Write-Warning "Message: $_"
                 exit(1)
