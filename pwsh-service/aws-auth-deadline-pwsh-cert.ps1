@@ -448,7 +448,8 @@ function Main {
     param (
         [parameter(mandatory)][string]$resourcetier
     )
-    Write-Host "`nPoll SQS Queue for certificate."
+    Write-Host "`nCurent user: $env:UserName"
+    Write-Host "Poll SQS Queue for certificate."
     $result = $(Poll-Sqs-Queue -resourcetier $resourcetier)
     if (-not $result) {
         Write-Host "No SQS message available to validate with yet. May already `
