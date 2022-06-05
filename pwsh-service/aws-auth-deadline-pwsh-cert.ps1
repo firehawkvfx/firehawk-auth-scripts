@@ -276,9 +276,9 @@ function Mount-NFS {
         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
         Write-Host "Mount Volume with: `
-New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist"
+New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global"
         # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
-        New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist
+        New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global
         if (-not $LASTEXITCODE -eq 0) {
             $message = $_
             Write-Warning "...Failed."
