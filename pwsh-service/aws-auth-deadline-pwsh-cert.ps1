@@ -215,6 +215,24 @@ function Get-Cert-From-Secrets-Manager {
     # Move-Item -Path $tmp_target_path -Destination $target_path
 }
 
+function Test-Path-With-Timeout {
+    $ps = [powershell]::Create().AddScript("Test-Path 'X:\' -PathType Container")
+        
+    # execute it asynchronously
+    $handle = $ps.BeginInvoke()
+    
+    # Wait 2500 milliseconds for it to finish
+    if(-not $handle.AsyncWaitHandle.WaitOne(2500)){
+        throw "timed out"
+        return
+    }
+    
+    # WaitOne() returned $true, let's fetch the result
+    $result = $ps.EndInvoke($handle)
+    
+    return $result
+}
+
 function Mount-NFS {
     param (
         [parameter(mandatory)][string]$resourcetier
@@ -222,7 +240,9 @@ function Mount-NFS {
     
     try {
         Write-Host "`nChecking if NFS mount exists: Test-Path `"X:\`" -PathType Container"
-        $mounts = $(Test-Path "X:\" -PathType Container)
+        # $mounts = $(Test-Path "X:\" -PathType Container)
+        $mounts = $(Test-Path-With-Timeout)
+
         Write-Host "mounts: $mounts"
         if ($mounts) {
             Write-Host "X: is already mounted"
