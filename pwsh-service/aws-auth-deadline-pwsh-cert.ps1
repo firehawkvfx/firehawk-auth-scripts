@@ -279,6 +279,8 @@ function Mount-NFS {
 New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global"
         # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
         New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global
+
+        # Invoke-Command -FilePath "New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global" -Credential Get-Credential
         if (-not $LASTEXITCODE -eq 0) {
             $message = $_
             Write-Warning "...Failed."
