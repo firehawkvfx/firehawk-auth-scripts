@@ -216,6 +216,7 @@ function Get-Cert-From-Secrets-Manager {
 }
 
 function Test-Path-With-Timeout {
+    Write-Host "`nChecking if NFS mount exists: Test-Path `"X:\`" -PathType Container"
     $ps = [powershell]::Create().AddScript("Test-Path 'X:\' -PathType Container")
         
     # execute it asynchronously
@@ -239,10 +240,8 @@ function Mount-NFS {
     )
     
     try {
-        Write-Host "`nChecking if NFS mount exists: Test-Path `"X:\`" -PathType Container"
-        # $mounts = $(Test-Path "X:\" -PathType Container)
+        
         $mounts = $(Test-Path-With-Timeout)
-
         Write-Host "mounts: $mounts"
         if ($mounts) {
             Write-Host "X: is already mounted"
@@ -255,6 +254,7 @@ function Mount-NFS {
         }
     }
     catch {
+        Write-Host "Msg: $_"
         Write-Host "Mount not yet present.  Will mount..."
         # if ($mounts -and $mounts.count -gt 0) {
         #     Write-Host "X: is already mounted"
@@ -286,6 +286,22 @@ New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Pers
             # Write-Warning "output: $cloud_nfs_filegateway_export"
             Write-Warning "message: $message"
             exit(1)
+        }
+        # ensure we were succesfull
+        try {
+            $mounts = $(Test-Path-With-Timeout)
+            Write-Host "mounts: $mounts"
+            if ($mounts) {
+                Write-Host "X: is already mounted"
+                $dir_content = $(ls X:\)
+                Write-Host "dir_content: $dir_content"
+                return
+            }
+            else {
+                throw "No mount exists."
+            }
+        } catch {
+            throw "Failed to mount at path X:\"
         }
     }
 }

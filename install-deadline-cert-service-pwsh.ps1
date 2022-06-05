@@ -66,6 +66,17 @@ function Main {
     $serviceName = "MyService"
     $myDownloadUrl="https://github.com/winsw/winsw/releases/download/v3.0.0-alpha.10/WinSW-x64.exe"
 
+    if (-not $confirm_ps7) {
+        Write-Host 'Ensure you run this script in a powershell 7 shell (with 
+        admin priviledges) to install the service.
+        '
+        $answer = Read-Host -Prompt 'Have you followed the above steps? [Y/n]'
+        if (-Not ("$answer".ToLower() -eq 'y')) {
+            Write-Host "Exiting"
+            exit
+        }
+    }
+
     # uninstall service
     if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
         # $serviceToRemove = Get-CimInstance -Class Win32_Service -Filter "name='$serviceName'"
@@ -84,16 +95,6 @@ function Main {
 
     # powershell -Command "Start-Process 'C:\Windows\SysWOW64\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
     # powershell -Command "Start-Process 'C:\Windows\system32\cmd.exe' -Verb RunAs -ArgumentList 'powershell Set-ExecutionPolicy RemoteSigned'"
-    if (-not $confirm_ps7) {
-        Write-Host 'Ensure you run this script in a powershell 7 shell (with 
-        admin priviledges) to install the service.
-        '
-        $answer = Read-Host -Prompt 'Have you followed the above steps? [Y/n]'
-        if (-Not ("$answer".ToLower() -eq 'y')) {
-            Write-Host "Exiting"
-            exit
-        }
-    }
 
     # configure NFS
     # # Set the location to the registry
