@@ -272,12 +272,11 @@ function Mount-NFS {
             exit(1)
         }
         # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
-
+        # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
+        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
         Write-Host "Mount Volume with: `
 New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist"
-        # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
-        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":", "\")
-        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
         # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
         New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist
         if (-not $LASTEXITCODE -eq 0) {
