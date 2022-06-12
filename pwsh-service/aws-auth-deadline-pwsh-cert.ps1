@@ -273,12 +273,15 @@ function Mount-NFS {
         }
         # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
         # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
-        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
-        $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
-        Write-Host "Mount Volume with: `
-New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global"
-        # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
-        New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global
+        Set-Content -Path $PSScriptRoot\nfsmount.bat -Value "mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:"
+
+#         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
+#         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
+#         Write-Host "Mount Volume with: `
+# New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global"
+#         # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
+#         New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global
+
 
         # Invoke-Command -FilePath "New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global" -Credential Get-Credential
         if (-not $LASTEXITCODE -eq 0) {
