@@ -274,9 +274,13 @@ function Mount-NFS {
         # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
         # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
 
-        Set-Content -Path $PSScriptRoot\nfsmount.bat -Value @"
+        Set-Content -Path $PSScriptRoot\nfs-mount.bat -Value @"
 umount -f X:\
 mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+pause
+"@
+        Set-Content -Path $PSScriptRoot\nfs-unmount.bat -Value @"
+umount -f X:\
 pause
 "@
 
