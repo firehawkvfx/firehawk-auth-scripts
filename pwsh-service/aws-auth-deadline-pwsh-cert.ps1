@@ -273,7 +273,12 @@ function Mount-NFS {
         }
         # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
         # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
-        Set-Content -Path $PSScriptRoot\nfsmount.bat -Value "mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:"
+
+        Set-Content -Path $PSScriptRoot\nfsmount.bat -Value @"
+umount -f X:\
+mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+pause
+"@
 
 #         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
 #         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")

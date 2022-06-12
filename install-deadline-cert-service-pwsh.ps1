@@ -24,6 +24,10 @@
 
   .EXAMPLE
   PS> .\install-deadline-cert-service-pwsh.ps1 -resourcetier dev -confirm_ps7 -deadline_user_name user
+
+  .EXAMPLE
+  # To skip AWS credential generation if you have already done this once:
+  PS> .\install-deadline-cert-service-pwsh.ps1 -resourcetier dev -confirm_ps7 -deadline_user_name user -skip_configure_aws
 #>
 
 # See:
