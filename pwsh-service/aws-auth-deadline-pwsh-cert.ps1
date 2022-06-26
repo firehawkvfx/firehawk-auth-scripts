@@ -36,14 +36,14 @@ function SSM-Get-Parm {
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
 
-    $output, $stderr = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
+    # $output, $stderr = $(Invoke-Expression "C:\Program Files\Amazon\AWSCLIV2\aws" "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
 
-    # $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
-    #     $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
-    #     ssm get-parameters --with-decryption --output json --names "$parm_name" 2>&1)
+    $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
+        $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+        ssm get-parameters --with-decryption --output json --names "$parm_name" 2>&1)
 
-    # $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
-    # $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+    $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+    $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
 
     # $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
     #         $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
@@ -105,7 +105,17 @@ function Poll-Sqs-Queue {
     while ($poll) {
         $count += 1
         Write-Host "aws sqs receive-message --queue-url $sqs_queue_url --output json"
-        $msg = $(aws sqs receive-message --queue-url $sqs_queue_url --output json)
+        # $msg = $(aws sqs receive-message --queue-url $sqs_queue_url --output json)
+
+        $allOutput = $(& 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+            sqs receive-message --queue-url $sqs_queue_url --output json 2>&1)
+
+        $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+        $msg = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+
+        if ($stderr) {
+            Write-Warning "STDERR: $stderr"
+        }
         Write-Host "msg: $msg"
         if ($msg) {
             $poll = $false
@@ -149,12 +159,20 @@ function Poll-Sqs-Queue {
                 }
                 
                 Write-Host "aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle"
-                aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle
+                # aws sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle
+
+                $allOutput = $(& 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+                    sqs delete-message --queue-url $sqs_queue_url --receipt-handle $receipt_handle 2>&1)
+        
+                $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+                $msg = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+
                 if (-not $LASTEXITCODE -eq 0) {
                     return $body
                 }
                 else {
-                    Write-Host "Error during aws sqs delete-message"
+                    Write-Warning "Error during aws sqs delete-message"
+                    Write-Warning "STDERR: $stderr"
                 }
             }
             else {
@@ -333,16 +351,22 @@ function Get-Secrets-Manager-File {
     Write-Host "`$tmp_target_path = `"$tmp_target_path`""
     Write-Host "Running: aws secretsmanager get-secret-value --secret-id"
 
-    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
+    # $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
+
+    $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+    secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json 2>&1)
+
+    $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+    $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
 
     # $message = $_
     # mv $tmp_target_path $target_path 
     if (-not $LASTEXITCODE -eq 0) {
-        $message = $_
         Write-Warning "...Failed running: $bash_script_path"
         Write-Warning "LASTEXITCODE: $LASTEXITCODE"
         Write-Warning "output: $output"
-        Write-Warning "message: $message"
+        Write-Warning "STDERR: $stderr"
+        Write-Warning "message: $_"
         exit(1)
     }
     Write-Host "Parsing SecretString"
