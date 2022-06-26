@@ -307,12 +307,16 @@ umount -f X:\
 mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
 pause
 "@
+Set-Content -Path $PSScriptRoot\nfs-mount-automation.bat -Value @"
+umount -f X:\
+mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
+"@
         Set-Content -Path $PSScriptRoot\nfs-unmount.bat -Value @"
 umount -f X:\
 pause
 "@
         Write-Host "Mounting..."
-        cmd.exe /c "$PSScriptRoot\nfs-mount.bat"
+        cmd.exe /c "$PSScriptRoot\nfs-mount-automation.bat"
         if (-not $LASTEXITCODE -eq 0) {
             $message = $_
             Write-Warning "...Failed."
