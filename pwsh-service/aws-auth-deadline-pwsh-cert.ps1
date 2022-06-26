@@ -45,7 +45,14 @@ function SSM-Get-Parm {
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
 
-    $output = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
+    # $output = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
+
+    $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
+        $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+        ssm get-parameters --with-decryption --output json --names "$parm_name" 2>&1)
+
+    $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+    $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
 
     # $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
     #         $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
@@ -55,6 +62,7 @@ function SSM-Get-Parm {
         Write-Warning "...Failed retrieving: $parm_name"
         Write-Warning "LASTEXITCODE: $LASTEXITCODE"
         Write-Warning "Result: $output"
+        Write-Warning "STDERR: $stderr"
         Write-Warning "Message: $_"
         exit(1)
     }
