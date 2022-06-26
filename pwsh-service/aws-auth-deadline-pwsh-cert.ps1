@@ -22,6 +22,8 @@ function Invoke-Expression {
     }
     catch {
         $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+        Write-Host "ERROR: $stderr"
+        Write-Error "$stderr"
         throw "$stderr"
     }
     finally {
