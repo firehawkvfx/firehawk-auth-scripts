@@ -17,19 +17,10 @@ function Invoke-Expression {
         [string]$executable,
         [string]$arguments
     )
-    try {
-        $allOutput = & $executable $arguments 2>&1
-    }
-    catch {
-        $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
-        Write-Host "ERROR: $stderr"
-        Write-Error "$stderr"
-        throw "$stderr"
-    }
-    finally {
-        $stdout = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
-    }
-    $stdout
+    $allOutput = & $executable $arguments 2>&1
+    $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+    $stdout = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+    $stdout, $stderr
 }
 
 function SSM-Get-Parm {
@@ -45,14 +36,14 @@ function SSM-Get-Parm {
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
 
-    # $output = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
+    $output, $stderr = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
 
-    $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
-        $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
-        ssm get-parameters --with-decryption --output json --names "$parm_name" 2>&1)
+    # $allOutput = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
+    #     $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+    #     ssm get-parameters --with-decryption --output json --names "$parm_name" 2>&1)
 
-    $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
-    $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+    # $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+    # $output = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
 
     # $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
     #         $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
