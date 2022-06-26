@@ -312,7 +312,7 @@ umount -f X:\
 pause
 "@
         Write-Host "Mounting..."
-        $PSScriptRoot\nfs-mount.bat
+        Start-Process "cmd.exe"  "/c $PSScriptRoot\nfs-mount.bat"
         if (-not $LASTEXITCODE -eq 0) {
             $message = $_
             Write-Warning "...Failed."
