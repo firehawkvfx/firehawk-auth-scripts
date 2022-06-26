@@ -194,16 +194,10 @@ function Test-Service-Up {
 function Get-Cert-From-Secrets-Manager {
     param (
         [parameter(mandatory)][string]$resourcetier,
-        [parameter(mandatory)][string]$host1,
-        [parameter(mandatory)][string]$host2,
-        [parameter(mandatory)][string]$vault_token,
         [parameter(mandatory)][string]$deadline_user_name
     )
     Write-Host "Request the deadline client certificate from proxy."
     $source_file_path = "/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-    # $source_vault_path = "$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
-    # $bash_home="/home/$deadline_user_name"
-    # $bash_windows_home="/mnt/c/users/$deadline_user_name"
     $windows_home = "C:\Users\$deadline_user_name"
     $tmp_target_path = "$windows_home\.ssh\_$($source_file_path | Split-Path -Leaf)"
     $target_path = "$windows_home\.ssh\$($source_file_path | Split-Path -Leaf)"
@@ -255,12 +249,8 @@ function Mount-NFS {
     }
     catch {
         Write-Host "Msg: $_"
-        Write-Host "Mount not yet present.  Will mount..."
-        # if ($mounts -and $mounts.count -gt 0) {
-        #     Write-Host "X: is already mounted"
-        #     return
-        # }
-        # Ensure NFS parm exists
+        Write-Host "Mount not yet present.  Will create nfs-mount.bat which you will need to click on in explorer..."
+
         Write-Host "Get NFS volume export path."
         $cloud_nfs_filegateway_export = $(SSM-Get-Parm "/firehawk/resourcetier/$resourcetier/cloud_nfs_filegateway_export")
         if (-not $LASTEXITCODE -eq 0) {
@@ -271,8 +261,6 @@ function Mount-NFS {
             Write-Warning "message: $message"
             exit(1)
         }
-        # Write-Host "Ensure mount exists: $cloud_nfs_filegateway_export"
-        # mount.exe -o anon,nolock,hard $cloud_nfs_filegateway_export X:
 
         Set-Content -Path $PSScriptRoot\nfs-mount.bat -Value @"
 umount -f X:\
@@ -284,20 +272,10 @@ umount -f X:\
 pause
 "@
 
-#         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace(":/", "\")
-#         $cloud_nfs_filegateway_export = $($cloud_nfs_filegateway_export).Replace("/", "\")
-#         Write-Host "Mount Volume with: `
-# New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global"
-#         # New-PSDrive X -PsProvider FileSystem -Root \\10.40.1.1\export\isos -Persist
-#         New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global
-
-
-        # Invoke-Command -FilePath "New-PSDrive X -PsProvider FileSystem -Root \\$cloud_nfs_filegateway_export -Persist -Scope Global" -Credential Get-Credential
         if (-not $LASTEXITCODE -eq 0) {
             $message = $_
             Write-Warning "...Failed."
             Write-Warning "LASTEXITCODE: $LASTEXITCODE"
-            # Write-Warning "output: $cloud_nfs_filegateway_export"
             Write-Warning "message: $message"
             exit(1)
         }
@@ -330,33 +308,9 @@ function Get-Secrets-Manager-File {
 
     Write-Host "Aquiring file from aws secrets manager"
 
-    
-    # log "Request the deadline client certificate from proxy."
-    # source_file_path="/opt/Thinkbox/certs/Deadline10RemoteClient.pfx" # the original file path that was stored in vault
-    # source_vault_path="$resourcetier/data/deadline/client_cert_files$source_file_path" # the full namespace / path to the file in vault.
-    # tmp_target_path="$HOME/.ssh/_$(basename $source_file_path)"
-    # target_path="$HOME/.ssh/$(basename $source_file_path)"
-
-    # rm -f $tmp_target_path
-    # $win_script_path = "$PSScriptRoot\get-vault-file"
-    # $bash_script_path = $(wsl wslpath -a "'$win_script_path'") # this is broken?
-    # $bash_script_path = "/mnt/c/AppData/get-vault-file" # TODO dont do this!
-
-    # Write-Host "`$win_script_path = `"$win_script_path`""
-    # Write-Host "`$bash_script_path = `"$bash_script_path`""
-    # Write-Host "`$host1 = `"$host1`""
-    # Write-Host "`$host2 = `"$host2`""
-    # Write-Host "`$source_vault_path = `"$source_vault_path`""
     Write-Host "`$tmp_target_path = `"$tmp_target_path`""
-    # Write-Host "`$vault_token = `"$vault_token`""
-
-    # TODO if winodws supports ssh certificates, get this working
-    # Get-File-Stdout-Proxy -host1 "$host1" -host2 "$host2" -vault_token "$vault_token" -source_vault_path "$source_vault_path" -target_path "$target_path"
-    
     Write-Host "Running: aws secretsmanager get-secret-value --secret-id"
-    # $output = $(bash -c "echo 'test'")
-    # $output = $(bash "$bash_script_path" --host1 $host1 --host2 $host2 --source-vault-path $source_vault_path --target-path $tmp_target_path --vault-token $vault_token)
-    
+
     $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' secretsmanager get-secret-value --secret-id "/firehawk/resourcetier/$resourcetier/file_deadline_cert" --output json)
 
     # $message = $_
@@ -374,9 +328,6 @@ function Get-Secrets-Manager-File {
     $output = $($output.SecretString | ConvertFrom-Json).file
     Write-Host = "`$output = `"$output`""
     Write-Host "Base64 decode"
-
-    # $converted = $(bash -c "echo $output | base64 --decode")
-    # $output=$([System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($output)))
 
     $bytes = [Convert]::FromBase64String($output)
 
@@ -526,10 +477,7 @@ be current, have already be drained or expired."
             Write-Host "...Getting SQS endpoint from SSM Parameter and await SQS message for VPN credentials."
 
             if ($result) {
-                $host1 = $result.host1
-                $host2 = $result.host2
-                $vault_token = $result.token
-                Get-Cert-From-Secrets-Manager "$resourcetier" "$host1" "$host2" "$vault_token" "$deadline_user_name"
+                Get-Cert-From-Secrets-Manager "$resourcetier" "$deadline_user_name"
                 Mount-NFS "$resourcetier"
             }
             else {
