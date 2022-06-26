@@ -12,21 +12,42 @@ $ErrorActionPreference = "Stop"
 
 # aws ssm get-parameters --with-decryption --names /firehawk/resourcetier/dev/sqs_remote_in_deadline_cert_url
 
+function Invoke-Expression {
+    param (
+        [string]$executable,
+        [string]$arguments
+    )
+    try {
+        $allOutput = & $executable $arguments 2>&1
+    }
+    catch {
+        $stderr = $allOutput | ?{ $_ -is [System.Management.Automation.ErrorRecord] }
+        throw "$stderr"
+    }
+    finally {
+        $stdout = $allOutput | ?{ $_ -isnot [System.Management.Automation.ErrorRecord] }
+    }
+    $stdout
+}
+
 function SSM-Get-Parm {
     param (
         [string]$parm_name
     )
-    # $env:AWS_DEFAULT_REGION = $aws_region
-    # $env:AWS_ACCESS_KEY_ID = $aws_access_key
-    # $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
+    $env:AWS_DEFAULT_REGION = $aws_region
+    $env:AWS_ACCESS_KEY_ID = $aws_access_key
+    $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key
     # Write-Host ""
     # Write-Host "Curent user: $env:UserName"
     Write-Host "...Get ssm parameter:"
     Write-Host "$parm_name"
     Write-Host "running:`naws ssm get-parameters --with-decryption --output json --names `"$parm_name`""
-    $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
-            $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
-            ssm get-parameters --with-decryption --output json --names "$parm_name")
+
+    $output = $(Invoke-Expression 'C:\Program Files\Amazon\AWSCLIV2\aws' "ssm get-parameters --with-decryption --output json --names `"$parm_name`"")
+
+    # $output = $($env:AWS_DEFAULT_REGION = $aws_region; $env:AWS_ACCESS_KEY_ID = $aws_access_key; `
+    #         $env:AWS_SECRET_ACCESS_KEY = $aws_secret_key; & 'C:\Program Files\Amazon\AWSCLIV2\aws' `
+    #         ssm get-parameters --with-decryption --output json --names "$parm_name")
     # $output = $(aws ssm get-parameters --with-decryption --output json --names "$parm_name")
     if (-not $LASTEXITCODE -eq 0) {
         Write-Warning "...Failed retrieving: $parm_name"
