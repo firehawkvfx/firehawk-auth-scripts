@@ -346,7 +346,17 @@ function sqs_send_vpn_payload {
   sqs_remote_in_vpn_url="$(ssm_get_parm /firehawk/resourcetier/$resourcetier/sqs_remote_in_vpn_url)"    
 
   printf "\n...Waiting for consul vpn service before attempting SQS notify.\n\n"
-  until consul catalog services | grep -m 1 "vpn"; do sleep 10 ; done
+  tries=0
+  max_tries=90
+  until [ $tries -gt $max_tries ] || consul catalog services | grep -m 1 "vpn"; do
+    tries=$(( $tries + 1 ))
+    sleep 10
+  done
+  if [ $tries -gt $max_tries ]; then
+    echo "Command timed out before service arrived"
+    exit 1
+  fi
+
 
   openvpn_admin_pw="$(vault kv get -field=value -address="$VAULT_ADDR" -format=json $resourcetier/network/openvpn_admin_pw)"
   append_json="{ \"openvpn_admin_pw\" : $openvpn_admin_pw }"
