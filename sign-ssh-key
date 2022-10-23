@@ -318,7 +318,7 @@ function generate_aws_creds_vpn {
   echo "Assuming you are configuring a VPN for first time use.  Configure your remote host with these keys to automate SSH and VPN auth (./install-vpn-service --resourcetier dev --host-type metal)."
   generate_aws_creds "$aws_backend_role"
   echo "On your remote host, start the VPN with:"
-  echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/install-vpn-service --resourcetier dev --host-type metal"
+  echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/pi-vpn-client/install-vpn-service --resourcetier dev --host-type metal"
   echo ""
 }
 

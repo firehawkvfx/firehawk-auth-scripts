@@ -11,7 +11,7 @@
   sudo su - ec2-user
   cd server
   source ./update_vars.sh
-  deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key
+  deploy/firehawk-main/modules/terraform-aws-vpn/modules/pi-vpn-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key
 
   .PARAMETER deadline_user_name
   Specifies the user name that will be used to determine the home dir to place the deadline certificate.
@@ -141,7 +141,7 @@ function Main {
             Write-Host "sudo su - ec2-user"
             Write-Host "cd server"
             Write-Host "source ./update_vars.sh"
-            Write-Host "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
+            Write-Host "deploy/firehawk-main/modules/terraform-aws-vpn/modules/pi-vpn-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
             Write-Host
             $aws_region = Read-Host -Prompt 'Enter your AWS Region:'
             $aws_access_key = Read-Host -Prompt 'Enter your AWS Access Key:'

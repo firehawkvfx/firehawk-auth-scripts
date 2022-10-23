@@ -187,7 +187,7 @@ function install {
     echo "sudo su - ec2-user"
     echo "cd server"
     echo "source ./update_vars.sh"
-    echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/openvpn-vagrant-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
+    echo "deploy/firehawk-main/modules/terraform-aws-vpn/modules/pi-vpn-client/scripts/firehawk-auth-scripts/sign-ssh-key --generate-aws-key"
     echo
     if [[ -z "$resourcetier" ]]; then
       read -p "resourcetier (dev/blue/green/main): " resourcetier
