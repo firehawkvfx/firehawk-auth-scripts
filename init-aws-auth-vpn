@@ -152,7 +152,7 @@ sudo journalctl -f -u awsauthvpn
 
 EOF
     )
-  echo "$completion_message"
+  # echo "$completion_message"
 
   if sudo test -f "/etc/motd"; then
     grep -q "^Firehawk VPN Service Message:" /etc/motd || echo "$completion_message" | sudo tee --append /etc/motd
